@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+dist/
+.angular/cache/
+*.js.map
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+
+# Prompts & specs (ne pas versionner)
+template.md
+backend_arcitecture.txt
+*.prompt.md
+*.instructions.md
+
+# PNG en racine (originaux de travail, assets sont dans src/)
+/*.png
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/settings.json
+*.suo
+*.user
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Misc
+nul
