@@ -19,30 +19,39 @@ import { AuthService, User } from '../../core/services/auth.service';
     MatDividerModule,
   ],
   template: `
-    <header class="ci-header">
-      <!-- Burger menu -->
-      <button mat-icon-button class="ci-header__burger" (click)="toggleSidebar.emit()">
-        <mat-icon>menu</mat-icon>
+    <header class="fn-header">
+      <!-- Burger -->
+      <button mat-icon-button class="fn-header__burger" (click)="toggleSidebar.emit()">
+        <mat-icon class="fn-header__burger-icon">segment</mat-icon>
       </button>
 
-      <!-- Spacer -->
-      <div class="ci-header__spacer"></div>
+      <!-- Breadcrumb nervure -->
+      <div class="fn-header__trail">
+        <span class="fn-header__trail-dot"></span>
+        <span class="fn-header__trail-label">CleanInk OnCall</span>
+      </div>
+
+      <div class="fn-header__spacer"></div>
+
+      <!-- AI pulse indicator -->
+      <div class="fn-header__ai-pulse">
+        <div class="fn-header__ai-ring"></div>
+        <div class="fn-header__ai-core"></div>
+        <span class="fn-header__ai-label">AI</span>
+      </div>
 
       <!-- Actions -->
-      <div class="ci-header__actions">
-
-        <!-- Notifications -->
-        <button mat-icon-button [matBadge]="3" matBadgeColor="warn" matTooltip="Notifications">
-          <mat-icon>notifications_none</mat-icon>
+      <div class="fn-header__actions">
+        <button mat-icon-button class="fn-header__action-btn"
+          [matBadge]="3" matBadgeSize="small">
+          <mat-icon class="fn-header__action-icon">notifications_none</mat-icon>
         </button>
 
         <!-- User menu -->
-        <button mat-button [matMenuTriggerFor]="userMenu" class="ci-header__user">
-          <div class="ci-header__avatar" *ngIf="user">
-            {{ initials }}
-          </div>
-          <span class="ci-header__username">{{ user?.name }}</span>
-          <mat-icon>expand_more</mat-icon>
+        <button mat-button [matMenuTriggerFor]="userMenu" class="fn-header__user">
+          <div class="fn-header__avatar" *ngIf="user">{{ initials }}</div>
+          <span class="fn-header__username">{{ user?.name }}</span>
+          <mat-icon class="fn-header__expand">expand_more</mat-icon>
         </button>
 
         <mat-menu #userMenu="matMenu" xPosition="before">
@@ -64,46 +73,138 @@ import { AuthService, User } from '../../core/services/auth.service';
     </header>
   `,
   styles: [`
-    .ci-header {
+    .fn-header {
       display: flex;
       align-items: center;
-      height: 60px;
-      padding: 0 1.5rem;
-      background: var(--color-surface);
-      border-bottom: 1px solid var(--color-border);
-      box-shadow: var(--shadow-sm);
+      height: 52px;
+      padding: 0 1.25rem;
+      background: rgba(6,10,25,.92);
+      border-bottom: 1px solid rgba(28,47,90,.5);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
       position: sticky;
       top: 0;
       z-index: 100;
+      gap: .75rem;
     }
-    .ci-header__burger { color: var(--color-text); }
-    .ci-header__spacer { flex: 1; }
-    .ci-header__actions {
+
+    .fn-header__burger {
+      color: var(--fn-text-dim) !important;
+      transition: color var(--fn-t-fast) !important;
+      &:hover { color: var(--fn-vein) !important; }
+    }
+    .fn-header__burger-icon { font-size: 18px !important; }
+
+    /* Trail */
+    .fn-header__trail {
       display: flex;
       align-items: center;
-      gap: 0.5rem;
+      gap: 7px;
     }
-    .ci-header__user {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0 0.75rem;
-    }
-    .ci-header__avatar {
-      width: 32px; height: 32px;
+    .fn-header__trail-dot {
+      width: 5px; height: 5px;
       border-radius: 50%;
-      background: var(--color-primary);
-      color: #fff;
-      font-size: 0.75rem;
+      background: var(--fn-bio);
+      box-shadow: 0 0 6px var(--fn-bio);
+      animation: fn-pulse-bio 2.5s ease-in-out infinite;
+    }
+    .fn-header__trail-label {
+      font-family: var(--fn-font-title);
+      font-size: .82rem;
+      letter-spacing: .1em;
+      color: var(--fn-text-dim);
+      text-transform: uppercase;
+    }
+
+    /* Spacer */
+    .fn-header__spacer { flex: 1; }
+
+    /* AI pulse */
+    .fn-header__ai-pulse {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border: 1px solid var(--fn-bio-dim);
+      border-radius: var(--fn-r-pill);
+      background: var(--fn-bio-glow);
+    }
+    .fn-header__ai-ring {
+      width: 12px; height: 12px;
+      border-radius: 50%;
+      border: 1px solid var(--fn-bio-trace);
+      animation: fn-halo-rotate 3s linear infinite;
+      flex-shrink: 0;
+    }
+    .fn-header__ai-core {
+      position: absolute;
+      width: 4px; height: 4px;
+      border-radius: 50%;
+      background: var(--fn-bio);
+      margin-left: 4px;
+      box-shadow: 0 0 4px var(--fn-bio);
+    }
+    .fn-header__ai-label {
+      font-size: .65rem;
       font-weight: 600;
+      letter-spacing: .12em;
+      color: var(--fn-bio);
+      text-transform: uppercase;
+    }
+
+    /* Actions */
+    .fn-header__actions {
+      display: flex;
+      align-items: center;
+      gap: .25rem;
+    }
+    .fn-header__action-btn { color: var(--fn-text-dim) !important; }
+    .fn-header__action-btn:hover { color: var(--fn-vein) !important; }
+    .fn-header__action-icon { font-size: 18px !important; }
+
+    /* User */
+    .fn-header__user {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 0 .65rem !important;
+      border: 1px solid transparent;
+      border-radius: var(--fn-r-pill) !important;
+      transition: all var(--fn-t-fast) var(--fn-ease) !important;
+      color: var(--fn-text-mid) !important;
+      line-height: 1 !important;
+
+      &:hover {
+        border-color: var(--fn-mist) !important;
+        background: var(--fn-velvet-high) !important;
+        color: var(--fn-vein) !important;
+      }
+    }
+
+    .fn-header__avatar {
+      width: 26px; height: 26px;
+      border-radius: 50%;
+      background: var(--fn-bio-dim);
+      border: 1px solid var(--fn-bio-trace);
+      color: var(--fn-bio);
+      font-size: .68rem;
+      font-weight: 700;
       display: flex;
       align-items: center;
       justify-content: center;
     }
-    .ci-header__username {
-      font-size: 0.875rem;
+
+    .fn-header__username {
+      font-size: .78rem;
       font-weight: 500;
-      color: var(--color-text);
+      color: inherit;
+      letter-spacing: .02em;
+    }
+    .fn-header__expand {
+      font-size: 14px !important;
+      width: 14px !important;
+      height: 14px !important;
+      color: inherit !important;
     }
   `],
 })

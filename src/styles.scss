@@ -1,4 +1,4 @@
-// ─── CleanInk OnCall — Global Styles ────────────────────────────────────────
+// ─── CleanInk OnCall — Fractal Nocturne Design System ───────────────────────
 @use '@angular/material' as mat;
 
 // Tailwind layers
@@ -6,121 +6,337 @@
 @tailwind components;
 @tailwind utilities;
 
-// ─── Design Tokens ──────────────────────────────────────────────────────────
+// ─── Fractal Nocturne — Design Tokens ────────────────────────────────────────
 :root {
-  --color-primary:    #1E5AA8;
-  --color-primary-dk: #0A1F44;
-  --color-ledger:     #D9D9D9;
-  --color-white:      #FFFFFF;
-  --color-accent:     #3B82F6;
-  --color-warn:       #EF4444;
-  --color-success:    #22C55E;
-  --color-text:       #1C2B3A;
-  --color-text-light: #64748B;
-  --color-bg:         #F8FAFC;
-  --color-surface:    #FFFFFF;
-  --color-border:     #E2E8F0;
+  // ── Core palette ──────────────────────────────────────────────────────────
+  --fn-void:          #04070f;     // deepest night
+  --fn-abyss:         #060c1a;     // background
+  --fn-velvet:        #090f22;     // surface 1
+  --fn-velvet-mid:    #0d1530;     // surface 2
+  --fn-velvet-lift:   #121d3e;     // surface 3 (cards)
+  --fn-velvet-high:   #1a2650;     // surface 4 (hover)
+  --fn-mist:          #1c2f5a;     // borders / dividers
+  --fn-fog:           rgba(28,47,90,.4);
 
-  --shadow-sm:  0 1px 3px rgba(10,31,68,.08);
-  --shadow-md:  0 4px 12px rgba(10,31,68,.12);
-  --shadow-lg:  0 8px 24px rgba(10,31,68,.16);
+  // ── Bio-luminescent accent ────────────────────────────────────────────────
+  --fn-bio:           #3de8b0;     // bioluminescent green
+  --fn-bio-dim:       rgba(61,232,176,.18);
+  --fn-bio-glow:      rgba(61,232,176,.08);
+  --fn-bio-trace:     rgba(61,232,176,.45);
 
-  --radius-sm:  4px;
-  --radius-md:  8px;
-  --radius-lg:  12px;
+  // ── Vein white ────────────────────────────────────────────────────────────
+  --fn-vein:          rgba(200,222,255,.85);
+  --fn-vein-dim:      rgba(160,190,240,.45);
+  --fn-vein-trace:    rgba(130,165,220,.18);
 
-  --font-sans: 'Inter', 'Roboto', sans-serif;
+  // ── Danger / warn ─────────────────────────────────────────────────────────
+  --fn-danger:        #e85e5e;
+  --fn-danger-dim:    rgba(232,94,94,.18);
+  --fn-warn:          #e8a83d;
+  --fn-warn-dim:      rgba(232,168,61,.15);
+
+  // ── Text ──────────────────────────────────────────────────────────────────
+  --fn-text:          #c5d8f0;
+  --fn-text-mid:      rgba(180,205,240,.7);
+  --fn-text-dim:      rgba(130,160,210,.5);
+
+  // ── Typography ────────────────────────────────────────────────────────────
+  --fn-font-title:    'Cormorant Garamond', 'Georgia', serif;
+  --fn-font-body:     'Inter', 'Roboto', sans-serif;
+  --fn-font-mono:     'JetBrains Mono', 'Fira Code', monospace;
+
+  // ── Radii ─────────────────────────────────────────────────────────────────
+  --fn-r-xs:   3px;
+  --fn-r-sm:   6px;
+  --fn-r-md:   10px;
+  --fn-r-lg:   16px;
+  --fn-r-xl:   24px;
+  --fn-r-pill: 999px;
+
+  // ── Shadows ───────────────────────────────────────────────────────────────
+  --fn-shadow-sm:  0 2px 8px rgba(0,0,0,.35);
+  --fn-shadow-md:  0 4px 20px rgba(0,0,0,.45), 0 0 1px var(--fn-mist);
+  --fn-shadow-lg:  0 8px 40px rgba(0,0,0,.55), 0 0 1px var(--fn-mist);
+  --fn-shadow-bio: 0 0 12px rgba(61,232,176,.25), 0 0 30px rgba(61,232,176,.10);
+  --fn-shadow-vein:0 0 8px rgba(130,165,220,.20);
+
+  // ── Animation ─────────────────────────────────────────────────────────────
+  --fn-ease:       cubic-bezier(0.22, 0.61, 0.36, 1);
+  --fn-ease-out:   cubic-bezier(0, 0.55, 0.45, 1);
+  --fn-ease-bloom: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --fn-t-fast:     140ms;
+  --fn-t-mid:      320ms;
+  --fn-t-slow:     600ms;
+
+  // ── Legacy aliases (keep existing components working) ─────────────────────
+  --color-primary:    #3b6fd4;
+  --color-primary-dk: var(--fn-velvet);
+  --color-ledger:     var(--fn-mist);
+  --color-white:      #ffffff;
+  --color-accent:     var(--fn-bio);
+  --color-warn:       var(--fn-danger);
+  --color-success:    var(--fn-bio);
+  --color-text:       var(--fn-text);
+  --color-text-light: var(--fn-text-dim);
+  --color-bg:         var(--fn-abyss);
+  --color-surface:    var(--fn-velvet-mid);
+  --color-border:     var(--fn-mist);
+  --shadow-sm:        var(--fn-shadow-sm);
+  --shadow-md:        var(--fn-shadow-md);
+  --shadow-lg:        var(--fn-shadow-lg);
+  --radius-sm:        var(--fn-r-sm);
+  --radius-md:        var(--fn-r-md);
+  --radius-lg:        var(--fn-r-lg);
+  --font-sans:        var(--fn-font-body);
 }
 
-// ─── Angular Material Theme ──────────────────────────────────────────────────
-$primary-palette: mat.define-palette(mat.$indigo-palette, 700, 300, 900);
-$accent-palette:  mat.define-palette(mat.$blue-palette, 500);
-$warn-palette:    mat.define-palette(mat.$red-palette);
+// ─── Angular Material — Dark Theme ───────────────────────────────────────────
+$primary-palette: mat.define-palette(mat.$indigo-palette, 300, 100, 500);
+$accent-palette:  mat.define-palette(mat.$teal-palette, 200);
+$warn-palette:    mat.define-palette(mat.$red-palette, 400);
 
-$cleanink-theme: mat.define-light-theme((
+$fn-theme: mat.define-dark-theme((
   color: (
     primary: $primary-palette,
     accent:  $accent-palette,
     warn:    $warn-palette,
   ),
   typography: mat.define-typography-config(
-    $font-family: var(--font-sans),
+    $font-family: 'Inter, Roboto, sans-serif',
   ),
-  density: 0,
+  density: -1,
 ));
 
-@include mat.all-component-themes($cleanink-theme);
+@include mat.all-component-themes($fn-theme);
 
 // ─── Base Reset ─────────────────────────────────────────────────────────────
 *,
 *::before,
-*::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
+*::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-html,
-body {
+html, body {
   height: 100%;
-  font-family: var(--font-sans);
+  font-family: var(--fn-font-body);
   font-size: 14px;
-  color: var(--color-text);
-  background-color: var(--color-bg);
+  color: var(--fn-text);
+  background-color: var(--fn-abyss);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-// ─── Scrollbar ──────────────────────────────────────────────────────────────
-::-webkit-scrollbar        { width: 6px; height: 6px; }
-::-webkit-scrollbar-track  { background: var(--color-bg); }
-::-webkit-scrollbar-thumb  { background: var(--color-ledger); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--color-primary); }
+// ─── Scrollbar ───────────────────────────────────────────────────────────────
+::-webkit-scrollbar        { width: 5px; height: 5px; }
+::-webkit-scrollbar-track  { background: var(--fn-velvet); }
+::-webkit-scrollbar-thumb  { background: var(--fn-mist); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--fn-bio-trace); }
+
+// ─── Fractal Nocturne Keyframes ──────────────────────────────────────────────
+@keyframes fn-pulse-bio {
+  0%, 100% { opacity: .55; }
+  50%       { opacity: 1; }
+}
+@keyframes fn-pulse-vein {
+  0%, 100% { opacity: .3; transform: scale(1); }
+  50%       { opacity: .7; transform: scale(1.015); }
+}
+@keyframes fn-bloom {
+  from { opacity: 0; transform: scale(.94); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes fn-branch-in {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes fn-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+@keyframes fn-halo-rotate {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
 
 // ─── Typography Helpers ──────────────────────────────────────────────────────
 .page-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--color-primary-dk);
-  letter-spacing: -0.02em;
+  font-family: var(--fn-font-title);
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: var(--fn-vein);
+  letter-spacing: .03em;
 }
 
 .section-title {
-  font-size: 1.125rem;
+  font-family: var(--fn-font-title);
+  font-size: 1.2rem;
   font-weight: 600;
-  color: var(--color-primary-dk);
+  color: var(--fn-vein);
+  letter-spacing: .02em;
 }
 
 .label-sm {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 500;
-  color: var(--color-text-light);
+  color: var(--fn-text-dim);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.1em;
 }
 
-// ─── Card Component ──────────────────────────────────────────────────────────
+// ─── ci-card — Membrane Velours ───────────────────────────────────────────────
 .ci-card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
+  background: var(--fn-velvet-lift);
+  border: 1px solid var(--fn-mist);
+  border-radius: var(--fn-r-lg);
+  box-shadow: var(--fn-shadow-md);
   padding: 1.5rem;
-  transition: box-shadow 0.2s ease;
+  position: relative;
+  overflow: hidden;
+  transition: box-shadow var(--fn-t-mid) var(--fn-ease),
+              border-color var(--fn-t-mid) var(--fn-ease),
+              transform var(--fn-t-mid) var(--fn-ease);
+  animation: fn-bloom var(--fn-t-slow) var(--fn-ease) both;
 
-  &:hover { box-shadow: var(--shadow-md); }
+  // Subtle vein highlight at top
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-top: 1px solid var(--fn-vein-trace);
+    border-radius: inherit;
+    pointer-events: none;
+  }
+
+  &:hover {
+    box-shadow: var(--fn-shadow-lg), var(--fn-shadow-vein);
+    border-color: rgba(100,140,220,.35);
+    transform: translateY(-1px);
+  }
 }
 
-// ─── Button Overrides ────────────────────────────────────────────────────────
+// ─── fn-btn — Pétale lumineux ─────────────────────────────────────────────────
+.fn-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: .5rem 1.1rem;
+  border: 1px solid var(--fn-mist);
+  border-radius: var(--fn-r-pill);
+  background: var(--fn-velvet-mid);
+  color: var(--fn-vein);
+  font-family: var(--fn-font-body);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  letter-spacing: .04em;
+  transition: all var(--fn-t-fast) var(--fn-ease);
+
+  &:hover {
+    background: var(--fn-velvet-high);
+    border-color: var(--fn-vein-dim);
+    box-shadow: var(--fn-shadow-vein);
+  }
+
+  &--primary {
+    background: var(--fn-bio-dim);
+    border-color: var(--fn-bio-trace);
+    color: var(--fn-bio);
+
+    &:hover {
+      background: rgba(61,232,176,.28);
+      border-color: var(--fn-bio);
+      box-shadow: var(--fn-shadow-bio);
+    }
+  }
+}
+
+// ─── fn-badge — Statut organique ─────────────────────────────────────────────
+.fn-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 9px;
+  border-radius: var(--fn-r-pill);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+
+  &::before {
+    content: '';
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+    animation: fn-pulse-bio 2.4s ease-in-out infinite;
+  }
+
+  &--active  { background: var(--fn-bio-dim);    color: var(--fn-bio);     border: 1px solid var(--fn-bio-trace);  }
+  &--pending { background: var(--fn-warn-dim);   color: var(--fn-warn);    border: 1px solid rgba(232,168,61,.3);  }
+  &--danger  { background: var(--fn-danger-dim); color: var(--fn-danger);  border: 1px solid rgba(232,94,94,.3);   }
+  &--muted   { background: var(--fn-fog);        color: var(--fn-text-dim);border: 1px solid var(--fn-mist);       }
+}
+
+// ─── Mat overrides — dark surface ────────────────────────────────────────────
+.mat-mdc-table {
+  background: transparent !important;
+  color: var(--fn-text) !important;
+}
+.mat-mdc-header-row  {
+  background: var(--fn-velvet) !important;
+  th { color: var(--fn-text-dim) !important; font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; }
+}
+.mat-mdc-row {
+  background: transparent !important;
+  border-bottom: 1px solid var(--fn-mist) !important;
+  transition: background var(--fn-t-fast) var(--fn-ease);
+
+  &:hover { background: var(--fn-velvet-high) !important; }
+  td { color: var(--fn-text) !important; }
+}
 .mat-mdc-raised-button.mat-primary {
-  background-color: var(--color-primary) !important;
+  background: var(--fn-bio-dim) !important;
+  color: var(--fn-bio) !important;
+  border: 1px solid var(--fn-bio-trace) !important;
+  box-shadow: none !important;
+  border-radius: var(--fn-r-pill) !important;
+  font-size: .8rem !important;
+  letter-spacing: .04em !important;
+  transition: all var(--fn-t-fast) var(--fn-ease) !important;
+
+  &:hover {
+    background: rgba(61,232,176,.28) !important;
+    box-shadow: var(--fn-shadow-bio) !important;
+  }
+}
+.mat-mdc-icon-button { color: var(--fn-text-dim) !important; }
+.mat-mdc-icon-button:hover { color: var(--fn-bio) !important; }
+
+.mdc-text-field { background: var(--fn-velvet-mid) !important; }
+
+// Mat spinner dark
+.mat-mdc-progress-spinner circle { stroke: var(--fn-bio) !important; }
+
+// Mat tooltip
+.mdc-tooltip__surface {
+  background: var(--fn-velvet-high) !important;
+  color: var(--fn-text) !important;
+  border: 1px solid var(--fn-mist) !important;
+  font-size: .75rem !important;
 }
 
-// ─── Mat Table ───────────────────────────────────────────────────────────────
-.mat-mdc-header-row {
-  background-color: var(--color-bg) !important;
+// Mat menu
+.mat-mdc-menu-panel {
+  background: var(--fn-velvet-mid) !important;
+  border: 1px solid var(--fn-mist) !important;
+  box-shadow: var(--fn-shadow-lg) !important;
 }
+.mat-mdc-menu-item { color: var(--fn-text) !important; }
+.mat-mdc-menu-item:hover { background: var(--fn-velvet-high) !important; }
 
-.mat-mdc-row:hover {
-  background-color: rgba(30, 90, 168, 0.04) !important;
-}
+// Mat divider
+.mat-divider { border-color: var(--fn-mist) !important; }
+
+// ─── Tailwind utility overrides (dark) ───────────────────────────────────────
+.text-gray-400 { color: var(--fn-text-dim) !important; }
+.text-red-500  { color: var(--fn-danger) !important; }
+.text-green-500{ color: var(--fn-bio) !important; }
+.text-sm { font-size: .8rem; }
