@@ -8,6 +8,13 @@ dist/
 .angular/cache/
 *.js.map
 
+# .NET build artifacts
+backend/**/bin/
+backend/**/obj/
+backend/**/*.user
+backend/**/*.suo
+backend/**/.vs/
+
 # Environment & secrets
 .env
 .env.*
