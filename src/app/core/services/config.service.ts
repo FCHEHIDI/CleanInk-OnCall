@@ -8,7 +8,7 @@ export interface AppConfig {
 }
 
 const DEFAULT_CONFIG: AppConfig = {
-  apiUrl: 'http://localhost:3000',
+  apiUrl: 'http://localhost:5041',  // dev: dotnet run; docker: override to http://localhost:5100
   appName: 'CleanInk OnCall',
   version: '1.0.0',
   production: false,

@@ -1,18 +1,12 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { StatusBadgeComponent } from '../../shared/components/status-badge/status-badge.component';
-
-interface Invoice {
-  id: string;
-  client: string;
-  amount: string;
-  date: string;
-  status: 'success' | 'pending' | 'error';
-}
+import { InvoiceService, InvoiceDto } from '../../shared/services/invoice.service';
 
 @Component({
   selector: 'app-billing',
@@ -22,6 +16,7 @@ interface Invoice {
     MatTableModule,
     MatButtonModule,
     MatIconModule,
+    MatProgressSpinnerModule,
     PageHeaderComponent,
     StatusBadgeComponent,
   ],
@@ -104,23 +99,55 @@ interface Invoice {
     .w-full { width: 100%; }
   `],
 })
-export class BillingComponent {
+export class BillingComponent implements OnInit {
   displayedColumns = ['id', 'client', 'amount', 'date', 'status', 'actions'];
+  loading = true;
+  error: string | null = null;
 
   stats = [
-    { label: 'Total facturé (mois)', value: '€ 42 800' },
-    { label: 'En attente',           value: '€ 8 350'  },
-    { label: 'Impayées',             value: '€ 1 200'  },
-    { label: 'Factures émises',      value: '67'        },
+    { label: 'Total facturé (mois)', value: '—' },
+    { label: 'En attente',           value: '—' },
+    { label: 'Impayées',             value: '—' },
+    { label: 'Factures émises',      value: '—' },
   ];
 
-  invoices: Invoice[] = [
-    { id: 'FAC-2024-0042', client: 'Clinique St-Marc',      amount: '€ 3 200', date: '28/04/2026', status: 'success' },
-    { id: 'FAC-2024-0041', client: 'Cabinet Dr. Renaud',    amount: '€ 1 800', date: '27/04/2026', status: 'pending' },
-    { id: 'FAC-2024-0040', client: 'Pharmacie Centrale',    amount: '€ 950',   date: '26/04/2026', status: 'success' },
-    { id: 'FAC-2024-0039', client: 'Labo BioAnalyse',       amount: '€ 2 100', date: '25/04/2026', status: 'error'   },
-    { id: 'FAC-2024-0038', client: 'Centre Médical Riviera',amount: '€ 4 600', date: '24/04/2026', status: 'success' },
-  ];
+  invoices: Array<{ id: string; client: string; amount: string; date: string; status: 'success' | 'pending' | 'error' }> = [];
+
+  constructor(private invoiceService: InvoiceService) {}
+
+  ngOnInit(): void {
+    this.invoiceService.getInvoices().subscribe({
+      next: (res) => {
+        this.invoices = res.items.map((inv) => ({
+          id: inv.id.substring(0, 8).toUpperCase(),
+          client: inv.customerId,
+          amount: `€ ${inv.amount.toFixed(2)}`,
+          date: new Date(inv.createdAt).toLocaleDateString('fr-FR'),
+          status: this.mapStatus(inv.status),
+        }));
+        const total = res.items.reduce((sum, i) => sum + i.amount, 0);
+        const pending = res.items.filter((i) => i.status === 'Issued').reduce((sum, i) => sum + i.amount, 0);
+        const overdue = res.items.filter((i) => i.status === 'Overdue').reduce((sum, i) => sum + i.amount, 0);
+        this.stats = [
+          { label: 'Total facturé (mois)', value: `€ ${total.toFixed(0)}` },
+          { label: 'En attente',           value: `€ ${pending.toFixed(0)}` },
+          { label: 'Impayées',             value: `€ ${overdue.toFixed(0)}` },
+          { label: 'Factures émises',      value: String(res.totalCount) },
+        ];
+        this.loading = false;
+      },
+      error: () => {
+        this.error = 'Impossible de charger les factures.';
+        this.loading = false;
+      },
+    });
+  }
+
+  private mapStatus(status: string): 'success' | 'pending' | 'error' {
+    if (status === 'Paid') return 'success';
+    if (status === 'Overdue' || status === 'Cancelled') return 'error';
+    return 'pending';
+  }
 
   statusLabel(status: string): string {
     const labels: Record<string, string> = { success: 'Payée', pending: 'En attente', error: 'Impayée' };

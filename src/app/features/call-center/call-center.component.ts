@@ -1,10 +1,117 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { StatusBadgeComponent } from '../../shared/components/status-badge/status-badge.component';
+import { CallService, CallDto } from '../../shared/services/call.service';
+
+@Component({
+  selector: 'app-call-center',
+  standalone: true,
+  imports: [
+    CommonModule,
+    MatTableModule,
+    MatButtonModule,
+    MatIconModule,
+    MatProgressSpinnerModule,
+    PageHeaderComponent,
+    StatusBadgeComponent,
+  ],
+  template: `
+    <app-page-header title="Centre d'appels" subtitle="File d'attente et appels en cours">
+      <button mat-raised-button color="primary">
+        <mat-icon>add_call</mat-icon>
+        Nouvel appel
+      </button>
+    </app-page-header>
+
+    <div *ngIf="loading" class="flex justify-center p-8">
+      <mat-spinner diameter="40"></mat-spinner>
+    </div>
+
+    <div *ngIf="error" class="ci-card text-red-500 p-4">{{ error }}</div>
+
+    <div class="ci-card" *ngIf="!loading && !error">
+      <table mat-table [dataSource]="calls" class="w-full">
+
+        <ng-container matColumnDef="subject">
+          <th mat-header-cell *matHeaderCellDef>Sujet</th>
+          <td mat-cell *matCellDef="let row">
+            <strong>{{ row.subject }}</strong>
+            <div class="text-xs text-gray-400">{{ row.aiTriageTag ?? '—' }}</div>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="operatorId">
+          <th mat-header-cell *matHeaderCellDef>Opérateur</th>
+          <td mat-cell *matCellDef="let row">{{ row.operatorId ?? 'En attente' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="createdAt">
+          <th mat-header-cell *matHeaderCellDef>Heure</th>
+          <td mat-cell *matCellDef="let row">{{ row.createdAt | date:'HH:mm' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef>Statut</th>
+          <td mat-cell *matCellDef="let row">
+            <app-status-badge [status]="statusMap[row.status]" [label]="row.status"></app-status-badge>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef></th>
+          <td mat-cell *matCellDef="let row">
+            <button mat-icon-button matTooltip="Détails">
+              <mat-icon>open_in_new</mat-icon>
+            </button>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+      </table>
+
+      <p *ngIf="calls.length === 0" class="text-center text-gray-400 py-6">
+        Aucun appel en cours.
+      </p>
+    </div>
+  `,
+  styles: [`.w-full { width: 100%; }`],
+})
+export class CallCenterComponent implements OnInit {
+  displayedColumns = ['subject', 'operatorId', 'createdAt', 'status', 'actions'];
+
+  calls: CallDto[] = [];
+  loading = true;
+  error: string | null = null;
+
+  readonly statusMap: Record<string, 'active' | 'pending' | 'inactive'> = {
+    InProgress: 'active',
+    Pending: 'pending',
+    Resolved: 'inactive',
+    Escalated: 'active',
+    Cancelled: 'inactive',
+  };
+
+  constructor(private callService: CallService) {}
+
+  ngOnInit(): void {
+    this.callService.getCalls().subscribe({
+      next: (res) => {
+        this.calls = res.items;
+        this.loading = false;
+      },
+      error: () => {
+        this.error = 'Impossible de charger les appels. Vérifiez votre connexion.';
+        this.loading = false;
+      },
+    });
+  }
+}
 
 interface CallEntry {
   id: string;
