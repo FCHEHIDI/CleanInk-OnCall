@@ -26,6 +26,30 @@ interface Activity {
   standalone: true,
   imports: [CommonModule, PageHeaderComponent, KpiCardComponent, MatIconModule],
   template: `
+    <div class="fn-scene">
+
+      <!-- ── Décor de salle ─────────────────────────── -->
+      <div class="fn-scene__bg"
+        [style.background-image]="'url(assets/images/backgrounds/background_Dashboard.png)'">
+      </div>
+      <div class="fn-scene__veil"></div>
+
+      <!-- Rosace — coin bas-droit, grande, débordement -->
+      <div class="fn-scene__deco fn-scene__deco--rosace-br">
+        <img src="assets/images/motif_rosace.png" alt="" />
+      </div>
+      <!-- Fougère — coin haut-gauche, rotation -->
+      <div class="fn-scene__deco fn-scene__deco--fougere-tl">
+        <img src="assets/images/motif_fougere.png" alt="" />
+      </div>
+      <!-- Rosace secondaire — haut-droit, petite, floue -->
+      <div class="fn-scene__deco fn-scene__deco--rosace-tr">
+        <img src="assets/images/motif_rosace.png" alt="" />
+      </div>
+
+      <!-- ── Contenu ────────────────────────────────── -->
+      <div class="fn-scene__content">
+
     <app-page-header
       title="Salle de Contrôle"
       subtitle="Vue d'ensemble des activités nocturnes"
@@ -120,9 +144,80 @@ interface Activity {
           </div>
         </div>
       </div>
-    </div>
+      </div><!-- /fn-scene__content -->
+    </div><!-- /fn-scene -->
   `,
   styles: [`
+    :host { display: block; }
+
+    /* ── Scene system ──────────────────────────────── */
+    .fn-scene {
+      position: relative;
+      min-height: 100%;
+      overflow: hidden;
+      /* bleed to layout edges */
+      margin: calc(-1 * var(--scene-pad-y, 1.75rem)) calc(-1 * var(--scene-pad-x, 2rem));
+    }
+    .fn-scene__bg {
+      position: absolute;
+      inset: 0;
+      background-size: cover;
+      background-position: center top;
+      opacity: .22;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .fn-scene__veil {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        150deg,
+        rgba(4,7,15,.78) 0%,
+        rgba(6,12,26,.55) 45%,
+        rgba(9,15,34,.70) 100%
+      );
+      pointer-events: none;
+      z-index: 1;
+    }
+    .fn-scene__deco {
+      position: absolute;
+      pointer-events: none;
+      z-index: 2;
+      img { width: 100%; height: 100%; object-fit: contain; display: block; }
+    }
+
+    /* Rosace grande — bas-droit (déborde) */
+    .fn-scene__deco--rosace-br {
+      width: 680px; height: 680px;
+      bottom: -220px; right: -200px;
+      opacity: .07;
+      transform: rotate(18deg);
+      filter: brightness(2) hue-rotate(25deg) blur(1.5px);
+    }
+    /* Fougère — haut-gauche (déborde) */
+    .fn-scene__deco--fougere-tl {
+      width: 440px; height: 440px;
+      top: -130px; left: -110px;
+      opacity: .055;
+      transform: rotate(-22deg) scaleX(-1);
+      filter: brightness(1.8) hue-rotate(10deg) blur(.8px);
+    }
+    /* Rosace petite — haut-droit */
+    .fn-scene__deco--rosace-tr {
+      width: 280px; height: 280px;
+      top: -60px; right: 80px;
+      opacity: .045;
+      transform: rotate(-8deg);
+      filter: brightness(2.2) hue-rotate(40deg) blur(2px);
+    }
+
+    .fn-scene__content {
+      position: relative;
+      z-index: 3;
+      padding: var(--scene-pad-y, 1.75rem) var(--scene-pad-x, 2rem);
+    }
+
+    /* ── Layout grids ──────────────────────────────── */
     .fn-kpi-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));

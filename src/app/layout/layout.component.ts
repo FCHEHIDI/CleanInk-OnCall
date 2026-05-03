@@ -90,6 +90,9 @@ import { SidebarComponent } from './sidebar/sidebar.component';
       flex: 1;
       overflow-y: auto;
       padding: 1.75rem 2rem;
+      /* expose to child scenes for bleed */
+      --scene-pad-x: 2rem;
+      --scene-pad-y: 1.75rem;
     }
 
     @media (max-width: 768px) {

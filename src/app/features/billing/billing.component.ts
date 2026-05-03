@@ -21,7 +21,31 @@ import { InvoiceService, InvoiceDto } from '../../shared/services/invoice.servic
     StatusBadgeComponent,
   ],
   template: `
-    <app-page-header title="Facturation" subtitle="Gestion des factures et documents">
+    <div class="fn-scene">
+
+      <!-- ── Décor de salle ─────────────────────────── -->
+      <div class="fn-scene__bg"
+        [style.background-image]="'url(assets/images/backgrounds/background_factures.png)'">
+      </div>
+      <div class="fn-scene__veil"></div>
+
+      <!-- Rosace — haut-droit, large, déborde -->
+      <div class="fn-scene__deco fn-scene__deco--rosace-tr">
+        <img src="assets/images/motif_rosace.png" alt="" />
+      </div>
+      <!-- Fougère — bas-gauche, rotation -->
+      <div class="fn-scene__deco fn-scene__deco--fougere-bl">
+        <img src="assets/images/motif_fougere.png" alt="" />
+      </div>
+      <!-- Rosace petite — milieu-gauche -->
+      <div class="fn-scene__deco fn-scene__deco--rosace-ml">
+        <img src="assets/images/motif_rosace.png" alt="" />
+      </div>
+
+      <!-- ── Contenu ────────────────────────────────── -->
+      <div class="fn-scene__content">
+
+    <app-page-header title="Salle des Factures" subtitle="Gestion des factures et documents">
       <button mat-raised-button color="primary">
         <mat-icon>add</mat-icon>
         Nouvelle facture
@@ -80,8 +104,78 @@ import { InvoiceService, InvoiceDto } from '../../shared/services/invoice.servic
         <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
       </table>
     </div>
+
+      </div><!-- /fn-scene__content -->
+    </div><!-- /fn-scene -->
   `,
   styles: [`
+    :host { display: block; }
+
+    .fn-scene {
+      position: relative;
+      min-height: 100%;
+      overflow: hidden;
+      margin: calc(-1 * var(--scene-pad-y, 1.75rem)) calc(-1 * var(--scene-pad-x, 2rem));
+    }
+    .fn-scene__bg {
+      position: absolute;
+      inset: 0;
+      background-size: cover;
+      background-position: center top;
+      opacity: .19;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .fn-scene__veil {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        170deg,
+        rgba(4,7,15,.76) 0%,
+        rgba(8,14,28,.48) 50%,
+        rgba(6,10,22,.74) 100%
+      );
+      pointer-events: none;
+      z-index: 1;
+    }
+    .fn-scene__deco {
+      position: absolute;
+      pointer-events: none;
+      z-index: 2;
+      img { width: 100%; height: 100%; object-fit: contain; display: block; }
+    }
+
+    /* Rosace — haut-droit (déborde) */
+    .fn-scene__deco--rosace-tr {
+      width: 560px; height: 560px;
+      top: -160px; right: -170px;
+      opacity: .075;
+      transform: rotate(10deg);
+      filter: brightness(2.1) hue-rotate(35deg) blur(1.2px);
+    }
+    /* Fougère — bas-gauche (déborde) */
+    .fn-scene__deco--fougere-bl {
+      width: 420px; height: 420px;
+      bottom: -120px; left: -100px;
+      opacity: .06;
+      transform: rotate(40deg);
+      filter: brightness(1.8) hue-rotate(15deg) blur(1px);
+    }
+    /* Rosace petite — milieu-gauche */
+    .fn-scene__deco--rosace-ml {
+      width: 220px; height: 220px;
+      top: 50%; left: -70px;
+      transform: translateY(-50%) rotate(-5deg);
+      opacity: .04;
+      filter: brightness(2) blur(2px);
+    }
+
+    .fn-scene__content {
+      position: relative;
+      z-index: 3;
+      padding: var(--scene-pad-y, 1.75rem) var(--scene-pad-x, 2rem);
+    }
+
     .billing-summary {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -91,8 +185,9 @@ import { InvoiceService, InvoiceDto } from '../../shared/services/invoice.servic
     .billing-stat__value {
       font-size: 1.5rem;
       font-weight: 700;
-      color: var(--color-primary-dk);
+      color: var(--fn-bio);
       margin-top: 0.5rem;
+      font-family: var(--fn-font-title);
     }
     .mt-6 { margin-top: 1.5rem; }
     .mb-4 { margin-bottom: 1rem; }

@@ -28,7 +28,31 @@ interface CallEntry {
     StatusBadgeComponent,
   ],
   template: `
-    <app-page-header title="Centre d'appels" subtitle="File d'attente et appels en cours">
+    <div class="fn-scene">
+
+      <!-- ── Décor de salle ─────────────────────────── -->
+      <div class="fn-scene__bg"
+        [style.background-image]="'url(assets/images/backgrounds/background_appels.png)'">
+      </div>
+      <div class="fn-scene__veil"></div>
+
+      <!-- Fougère — droite, grande, déborde verticalement -->
+      <div class="fn-scene__deco fn-scene__deco--fougere-r">
+        <img src="assets/images/motif_fougere.png" alt="" />
+      </div>
+      <!-- Rosace — bas-gauche -->
+      <div class="fn-scene__deco fn-scene__deco--rosace-bl">
+        <img src="assets/images/motif_rosace.png" alt="" />
+      </div>
+      <!-- Fougère miroir — bas-centre -->
+      <div class="fn-scene__deco fn-scene__deco--fougere-bc">
+        <img src="assets/images/motif_fougere.png" alt="" />
+      </div>
+
+      <!-- ── Contenu ────────────────────────────────── -->
+      <div class="fn-scene__content">
+
+    <app-page-header title="Salle des Appels" subtitle="File d'attente et appels en cours">
       <button mat-raised-button color="primary">
         <mat-icon>add_call</mat-icon>
         Nouvel appel
@@ -81,8 +105,80 @@ interface CallEntry {
         <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
       </table>
     </div>
+
+      </div><!-- /fn-scene__content -->
+    </div><!-- /fn-scene -->
   `,
-  styles: [`.w-full { width: 100%; }`],
+  styles: [`
+    :host { display: block; }
+
+    .fn-scene {
+      position: relative;
+      min-height: 100%;
+      overflow: hidden;
+      margin: calc(-1 * var(--scene-pad-y, 1.75rem)) calc(-1 * var(--scene-pad-x, 2rem));
+    }
+    .fn-scene__bg {
+      position: absolute;
+      inset: 0;
+      background-size: cover;
+      background-position: center center;
+      opacity: .20;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .fn-scene__veil {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        135deg,
+        rgba(4,7,15,.80) 0%,
+        rgba(6,12,26,.50) 50%,
+        rgba(4,7,15,.72) 100%
+      );
+      pointer-events: none;
+      z-index: 1;
+    }
+    .fn-scene__deco {
+      position: absolute;
+      pointer-events: none;
+      z-index: 2;
+      img { width: 100%; height: 100%; object-fit: contain; display: block; }
+    }
+
+    /* Fougère — droite haute (déborde) */
+    .fn-scene__deco--fougere-r {
+      width: 520px; height: 520px;
+      top: -60px; right: -160px;
+      opacity: .07;
+      transform: rotate(12deg);
+      filter: brightness(1.9) hue-rotate(15deg) blur(1px);
+    }
+    /* Rosace — bas-gauche (déborde) */
+    .fn-scene__deco--rosace-bl {
+      width: 500px; height: 500px;
+      bottom: -180px; left: -150px;
+      opacity: .065;
+      transform: rotate(-5deg);
+      filter: brightness(2) hue-rotate(20deg) blur(1.5px);
+    }
+    /* Fougère miroir — bas-centre, légère */
+    .fn-scene__deco--fougere-bc {
+      width: 320px; height: 320px;
+      bottom: -80px; left: 50%;
+      transform: translateX(-50%) rotate(175deg);
+      opacity: .04;
+      filter: brightness(1.6) blur(1px);
+    }
+
+    .fn-scene__content {
+      position: relative;
+      z-index: 3;
+      padding: var(--scene-pad-y, 1.75rem) var(--scene-pad-x, 2rem);
+    }
+
+    .w-full { width: 100%; }
+  `],
 })
 export class CallCenterComponent {
   displayedColumns = ['caller', 'agent', 'duration', 'time', 'status', 'actions'];
