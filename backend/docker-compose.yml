@@ -1,0 +1,46 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: cleanink_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: cleanink_oncall
+      POSTGRES_USER: cleanink
+      POSTGRES_PASSWORD: cleanink_pass
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cleanink -d cleanink_oncall"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cleanink_api
+    restart: unless-stopped
+    ports:
+      - "5100:80"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Default: "Host=postgres;Port=5432;Database=cleanink_oncall;Username=cleanink;Password=cleanink_pass"
+      Jwt__SecretKey: "CHANGE_ME_IN_PRODUCTION_USE_ENV_VAR_OR_SECRETS_MANAGER"
+      Jwt__Issuer: "CleanInkOnCall"
+      Jwt__Audience: "CleanInkOnCallClients"
+      # Override these with real keys via .env file or CI secrets
+      Claude__ApiKey: "${CLAUDE_API_KEY:-CHANGE_ME}"
+      AzureOpenAI__ApiKey: "${AZURE_OPENAI_API_KEY:-CHANGE_ME}"
+      AzureOpenAI__Endpoint: "${AZURE_OPENAI_ENDPOINT:-https://placeholder.openai.azure.com}"
+      AzureOpenAI__DeploymentName: "${AZURE_OPENAI_DEPLOYMENT:-gpt-4o}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
