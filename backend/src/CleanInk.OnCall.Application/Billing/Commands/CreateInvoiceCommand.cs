@@ -10,19 +10,19 @@ namespace CleanInk.OnCall.Application.Billing.Commands;
 /// <summary>
 /// Command to create a new invoice.
 /// </summary>
-/// <param name="CustomerId">ID of the customer.</param>
+/// <param name="PatientId">ID of the patient.</param>
 /// <param name="Reference">Unique human-readable reference.</param>
-/// <param name="AmountCents">Amount in smallest currency unit (e.g. euro cents).</param>
-/// <param name="DueDate">UTC due date (must be in the future).</param>
-/// <param name="CallId">Optional linked call ID.</param>
-/// <param name="Currency">ISO 4217 currency code (default "EUR").</param>
+/// <param name="AmountCents">Amount in euro cents (must be positive).</param>
+/// <param name="VatCents">VAT amount in euro cents (default 0).</param>
+/// <param name="EncounterId">Optional linked encounter ID.</param>
+/// <param name="PractitionerId">Optional linked practitioner ID.</param>
 public record CreateInvoiceCommand(
-    Guid CustomerId,
+    Guid PatientId,
     string Reference,
-    long AmountCents,
-    DateTime DueDate,
-    Guid? CallId = null,
-    string Currency = "EUR") : IRequest<Result<InvoiceDto>>;
+    int AmountCents,
+    int VatCents = 0,
+    Guid? EncounterId = null,
+    Guid? PractitionerId = null) : IRequest<Result<InvoiceDto>>;
 
 /// <summary>
 /// Handles <see cref="CreateInvoiceCommand"/>.
@@ -52,16 +52,16 @@ public sealed class CreateInvoiceCommandHandler
         CancellationToken cancellationToken)
     {
         _logger.LogInformation(
-            "Creating invoice ref='{Reference}' for customer {CustomerId}",
-            request.Reference, request.CustomerId);
+            "Creating invoice ref='{Reference}' for patient {PatientId}",
+            request.Reference, request.PatientId);
 
         var invoiceResult = Invoice.Create(
-            request.CustomerId,
+            request.PatientId,
             request.Reference,
             request.AmountCents,
-            request.DueDate,
-            request.CallId,
-            request.Currency);
+            request.VatCents,
+            request.EncounterId,
+            request.PractitionerId);
 
         if (invoiceResult.IsFailure)
         {
@@ -71,19 +71,18 @@ public sealed class CreateInvoiceCommandHandler
 
         var invoice = invoiceResult.Value;
         await _invoices.AddAsync(invoice, cancellationToken);
-        await _invoices.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Invoice {InvoiceId} created successfully", invoice.Id);
 
         return Result<InvoiceDto>.Success(new InvoiceDto(
             invoice.Id,
-            invoice.CustomerId,
-            invoice.CallId,
+            invoice.PatientId,
+            invoice.EncounterId,
             invoice.Reference,
             invoice.AmountCents,
-            invoice.Currency,
+            invoice.VatCents,
             invoice.Status.ToString(),
-            invoice.DueDate,
-            invoice.CreatedAt));
+            invoice.IssuedAt,
+            invoice.DueAt));
     }
 }

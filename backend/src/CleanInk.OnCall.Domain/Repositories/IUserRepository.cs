@@ -4,6 +4,7 @@ namespace CleanInk.OnCall.Domain.Repositories;
 
 /// <summary>
 /// Repository contract for <see cref="User"/> aggregate persistence.
+/// All queries are automatically scoped to the current tenant schema via <see cref="CleanInk.OnCall.Application.Common.Interfaces.ITenantContext"/>.
 /// </summary>
 public interface IUserRepository
 {

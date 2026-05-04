@@ -1,15 +1,17 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Output, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, RouterLinkActive } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDividerModule } from '@angular/material/divider';
+import { AuthService } from '../../core/services/auth.service';
 
 interface NavItem {
   label: string;
-  salle: string;   // room name displayed small
+  salle: string;
   icon: string;
   route: string;
+  adminOnly?: boolean;
 }
 
 @Component({
@@ -30,7 +32,7 @@ interface NavItem {
       <div class="fn-sidebar__brand">
         <div class="fn-sidebar__owl-wrap">
           <img
-            src="assets/images/logo_chouette.png"
+            src="assets/images/logo_cioc.png"
             alt="CleanInk OnCall"
             class="fn-sidebar__owl"
           />
@@ -152,8 +154,8 @@ interface NavItem {
     }
 
     .fn-sidebar__owl {
-      width: 38px;
-      height: 38px;
+      width: 48px;
+      height: 48px;
       object-fit: contain;
       display: block;
       position: relative;
@@ -337,14 +339,29 @@ interface NavItem {
     }
   `],
 })
-export class SidebarComponent {
+export class SidebarComponent implements OnInit {
   @Input() collapsed = false;
   @Output() toggleCollapse = new EventEmitter<void>();
 
-  navItems: NavItem[] = [
-    { label: 'Tableau de bord', salle: 'Salle de Contrôle',  icon: 'hub',                  route: '/dashboard'   },
-    { label: 'Centre d\'appels', salle: 'Salle des Appels',  icon: 'cell_tower',            route: '/call-center' },
+  private readonly allNavItems: NavItem[] = [
+    { label: 'Tableau de bord',  salle: 'Salle de Contrôle',  icon: 'hub',                  route: '/dashboard'   },
+    { label: "Centre d'appels",  salle: 'Salle des Appels',   icon: 'cell_tower',           route: '/call-center' },
+    { label: 'Patients',         salle: 'Dossiers Cliniques', icon: 'folder_shared',        route: '/patients'    },
+    { label: 'Consultations',    salle: 'Salle des Rencontres', icon: 'medical_services',   route: '/encounters'  },
     { label: 'Facturation',      salle: 'Salle des Factures', icon: 'receipt_long',         route: '/billing'     },
-    { label: 'Administration',   salle: 'Accès restreint',   icon: 'admin_panel_settings',  route: '/admin'       },
+    { label: 'Assistant IA',     salle: 'Triage & Analyse',   icon: 'psychology',           route: '/ai'          },
+    { label: 'Journal d\'audit', salle: 'Traçabilité RGPD',  icon: 'security',             route: '/audit',  adminOnly: true },
+    { label: 'Administration',   salle: 'Accès restreint',    icon: 'admin_panel_settings', route: '/admin',  adminOnly: true },
   ];
+
+  navItems: NavItem[] = [];
+
+  constructor(private auth: AuthService) {}
+
+  ngOnInit(): void {
+    this.auth.currentUser$.subscribe((user) => {
+      const isAdmin = user?.role?.toLowerCase() === 'admin';
+      this.navItems = this.allNavItems.filter((item) => !item.adminOnly || isAdmin);
+    });
+  }
 }

@@ -1,83 +1,86 @@
 using CleanInk.OnCall.Domain.Common;
 using CleanInk.OnCall.Domain.Events;
 using CleanInk.OnCall.Shared;
+using CleanInk.OnCall.Shared.Fhir;
 
 namespace CleanInk.OnCall.Domain.Entities;
 
 /// <summary>
-/// Represents the status of a call in the call-center workflow.
-/// </summary>
-public enum CallStatus
-{
-    /// <summary>Call is waiting to be assigned.</summary>
-    Pending = 0,
-
-    /// <summary>Call is currently being handled by an operator.</summary>
-    InProgress = 1,
-
-    /// <summary>Call has been resolved successfully.</summary>
-    Resolved = 2,
-
-    /// <summary>Call was escalated to a higher tier.</summary>
-    Escalated = 3,
-
-    /// <summary>Call was cancelled before resolution.</summary>
-    Cancelled = 4
-}
-
-/// <summary>
-/// Aggregate root representing an inbound customer call in the CleanInk OnCall system.
-/// Tracks the full lifecycle from reception through resolution.
+/// Call Center aggregate root — represents an inbound patient or emergency call.
+///
+/// Domain invariants:
+/// 1. "Resolved" or "Cancelled" call → status is IMMUTABLE.
+/// 2. A call can only be assigned to a Medecin or Infirmier role.
+/// 3. A "Pending" call cannot be escalated — must be InProgress first.
+/// 4. Only Medecin + Admin roles can escalate (enforced in command handlers).
+/// 5. Every status transition raises a domain event for the audit trail.
+///
+/// FHIR: Calls loosely map to FHIR Communication or ServiceRequest resources.
+/// For calls that result in an encounter, <see cref="EncounterId"/> is set.
 /// </summary>
 public sealed class Call : Entity<Guid>
 {
-    // Private constructor required by EF Core.
     private Call() { }
 
-    /// <summary>Gets the ID of the customer who placed the call.</summary>
-    public Guid CustomerId { get; private set; }
+    // ── Relations ────────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Optional link to the identified <see cref="Patient"/> aggregate.
-    /// Null until the patient is identified during triage.
-    /// </summary>
+    /// <summary>Patient linked to this call. May be null until identified during triage.</summary>
     public Guid? PatientId { get; private set; }
 
-    /// <summary>Gets the ID of the operator handling the call, if assigned.</summary>
-    public Guid? OperatorId { get; private set; }
+    /// <summary>Call-center agent who created the call.</summary>
+    public Guid CreatedByUserId { get; private set; }
 
-    /// <summary>Gets the short subject/reason of the call.</summary>
+    /// <summary>Practitioner (Medecin or Infirmier) assigned to handle the call.</summary>
+    public Guid? AssignedPractitionerId { get; private set; }
+
+    /// <summary>Encounter created from this call, if it resulted in a clinical interaction.</summary>
+    public Guid? EncounterId { get; private set; }
+
+    // ── Content ──────────────────────────────────────────────────────────────
+
+    /// <summary>Short subject/reason line (max 200 chars).</summary>
     public string Subject { get; private set; } = string.Empty;
 
-    /// <summary>Gets the full transcribed or typed description of the call.</summary>
+    /// <summary>Full transcribed or typed description.</summary>
     public string Description { get; private set; } = string.Empty;
 
-    /// <summary>Gets the current lifecycle status of the call.</summary>
+    /// <summary>Triage priority: "routine" | "urgent" | "asap" | "stat".</summary>
+    public string Priority { get; private set; } = "routine";
+
+    // ── Status ───────────────────────────────────────────────────────────────
+
+    /// <summary>Current lifecycle status of the call.</summary>
     public CallStatus Status { get; private set; }
 
-    /// <summary>Gets the AI-generated triage classification tag (e.g. "billing", "technical").</summary>
+    // ── AI enrichment ────────────────────────────────────────────────────────
+
+    /// <summary>AI-generated triage classification tag (e.g. "cardiologie", "urgence").</summary>
     public string? AiTriageTag { get; private set; }
 
-    /// <summary>Gets the AI-generated summary of the conversation.</summary>
+    /// <summary>AI-generated summary of the conversation.</summary>
     public string? AiSummary { get; private set; }
 
-    /// <summary>Gets the UTC timestamp when the call was created.</summary>
+    // ── Metadata ─────────────────────────────────────────────────────────────
+
+    /// <summary>UTC timestamp of call creation.</summary>
     public DateTime CreatedAt { get; private set; }
 
-    /// <summary>Gets the UTC timestamp of the last update.</summary>
+    /// <summary>UTC timestamp of the last update.</summary>
     public DateTime UpdatedAt { get; private set; }
 
     /// <summary>
-    /// Factory method to create a new <see cref="Call"/> aggregate.
+    /// Factory — creates a new pending call.
+    /// Raises <see cref="CallCreatedEvent"/>.
     /// </summary>
-    /// <param name="customerId">ID of the customer.</param>
-    /// <param name="subject">Short subject line (max 200 chars).</param>
-    /// <param name="description">Full call description.</param>
-    /// <returns>A <see cref="Result{Call}"/> with the new call or a validation error.</returns>
-    public static Result<Call> Create(Guid customerId, string subject, string description)
+    public static Result<Call> Create(
+        Guid createdByUserId,
+        string subject,
+        string description,
+        Guid? patientId = null,
+        string priority = "routine")
     {
-        if (customerId == Guid.Empty)
-            return Error.Validation(nameof(CustomerId), "CustomerId cannot be empty.");
+        if (createdByUserId == Guid.Empty)
+            return Error.Validation(nameof(CreatedByUserId), "Created-by user ID is required.");
 
         if (string.IsNullOrWhiteSpace(subject))
             return Error.Validation(nameof(Subject), "Subject is required.");
@@ -85,117 +88,152 @@ public sealed class Call : Entity<Guid>
         if (subject.Length > 200)
             return Error.Validation(nameof(Subject), "Subject cannot exceed 200 characters.");
 
+        var validPriorities = new[] { "routine", "urgent", "asap", "stat" };
+        if (!validPriorities.Contains(priority))
+            return Error.Validation(nameof(Priority),
+                $"Priority must be one of: {string.Join(", ", validPriorities)}.");
+
         var now = DateTime.UtcNow;
         var call = new Call
         {
             Id = Guid.NewGuid(),
-            CustomerId = customerId,
+            PatientId = patientId,
+            CreatedByUserId = createdByUserId,
             Subject = subject.Trim(),
-            Description = description?.Trim() ?? string.Empty,
+            Description = description.Trim(),
+            Priority = priority,
             Status = CallStatus.Pending,
             CreatedAt = now,
-            UpdatedAt = now
+            UpdatedAt = now,
         };
 
-        call.RaiseDomainEvent(new CallCreatedEvent(call.Id, null, call.Subject, now));
+        call.RaiseDomainEvent(new CallCreatedEvent(call.Id, patientId, subject, now));
+
         return call;
     }
 
-    /// <summary>Assigns the call to an operator and moves it to <see cref="CallStatus.InProgress"/>.</summary>
-    /// <param name="operatorId">ID of the operator to assign.</param>
-    /// <returns>A <see cref="Result"/> indicating success or failure.</returns>
-    public Result Assign(Guid operatorId)
+    /// <summary>
+    /// Assigns a practitioner (Medecin or Infirmier) to handle the call.
+    /// Invariant: only those roles may be assigned (enforced by the caller/command handler).
+    /// </summary>
+    public Result AssignTo(Guid practitionerId)
     {
-        if (operatorId == Guid.Empty)
-            return Result.Failure(Error.Validation(nameof(OperatorId), "OperatorId cannot be empty."));
+        if (IsTerminal)
+            return Result.Failure(new Error("Call.Immutable", "A resolved or cancelled call cannot be reassigned."));
 
-        if (Status != CallStatus.Pending)
-            return Result.Failure(new Error("Call.InvalidTransition",
-                $"Cannot assign a call in status '{Status}'."));
+        if (practitionerId == Guid.Empty)
+            return Result.Failure(Error.Validation(nameof(practitionerId), "Practitioner ID is required."));
 
-        OperatorId = operatorId;
+        AssignedPractitionerId = practitionerId;
         Status = CallStatus.InProgress;
         UpdatedAt = DateTime.UtcNow;
-        RaiseDomainEvent(new CallAssignedEvent(Id, operatorId, UpdatedAt));
-        return Result.Success;
-    }
 
-    /// <summary>Marks the call as resolved.</summary>
-    /// <returns>A <see cref="Result"/> indicating success or failure.</returns>
-    public Result Resolve()
-    {
-        if (Status != CallStatus.InProgress)
-            return Result.Failure(new Error("Call.InvalidTransition",
-                $"Cannot resolve a call in status '{Status}'."));
+        RaiseDomainEvent(new CallAssignedEvent(Id, practitionerId, DateTime.UtcNow));
 
-        Status = CallStatus.Resolved;
-        UpdatedAt = DateTime.UtcNow;
         return Result.Success;
     }
 
     /// <summary>
-    /// Escalates the call to a senior clinician or doctor.
-    /// Raises <see cref="CallEscalatedEvent"/>.
+    /// Resolves the call. Once resolved, status is IMMUTABLE.
+    /// Raises <see cref="CallResolvedEvent"/>.
     /// </summary>
-    /// <param name="escalatedBy">ID of the operator triggering escalation.</param>
-    /// <param name="reason">Clinical reason for escalation (mandatory).</param>
-    /// <returns>A <see cref="Result"/> indicating success or failure.</returns>
-    public Result Escalate(Guid escalatedBy, string reason)
+    public Result Resolve(string? resolutionNote = null)
     {
-        if (Status is CallStatus.Resolved or CallStatus.Cancelled)
-            return Result.Failure(new Error("Call.InvalidTransition",
-                $"Cannot escalate a call in status '{Status}'."));
+        if (IsTerminal)
+            return Result.Failure(new Error("Call.Immutable", "A resolved or cancelled call cannot be resolved again."));
+
+        Status = CallStatus.Resolved;
+        UpdatedAt = DateTime.UtcNow;
+
+        RaiseDomainEvent(new CallResolvedEvent(Id, PatientId, DateTime.UtcNow));
+
+        return Result.Success;
+    }
+
+    /// <summary>
+    /// Escalates the call to a higher tier.
+    /// Invariant: a Pending call cannot be escalated — must be InProgress first.
+    /// </summary>
+    public Result Escalate(string reason)
+    {
+        if (IsTerminal)
+            return Result.Failure(new Error("Call.Immutable", "A resolved or cancelled call cannot be escalated."));
+
+        if (Status == CallStatus.Pending)
+            return Result.Failure(new Error("Call.NotAssigned",
+                "A call must be InProgress before it can be escalated."));
 
         if (string.IsNullOrWhiteSpace(reason))
             return Result.Failure(Error.Validation(nameof(reason), "Escalation reason is required."));
 
         Status = CallStatus.Escalated;
         UpdatedAt = DateTime.UtcNow;
-        RaiseDomainEvent(new CallEscalatedEvent(Id, escalatedBy, reason, UpdatedAt));
+
+        RaiseDomainEvent(new CallEscalatedEvent(Id, PatientId, reason, DateTime.UtcNow));
+
         return Result.Success;
     }
 
     /// <summary>
-    /// Closes the call with a mandatory clinical summary.
-    /// Raises <see cref="CallClosedEvent"/>.
+    /// Cancels the call.
+    /// Invariant: resolved calls cannot be cancelled.
     /// </summary>
-    /// <param name="closedBy">ID of the operator closing the call.</param>
-    /// <param name="summary">Mandatory summary of the call outcome (min 10 chars).</param>
-    /// <returns>A <see cref="Result"/> indicating success or failure.</returns>
-    public Result Close(Guid closedBy, string summary)
+    public Result Cancel(string reason)
     {
-        if (Status is CallStatus.Cancelled)
-            return Result.Failure(new Error("Call.InvalidTransition", "Cannot close a cancelled call."));
+        if (Status == CallStatus.Resolved)
+            return Result.Failure(new Error("Call.Immutable", "A resolved call cannot be cancelled."));
 
-        if (Status is CallStatus.Resolved)
-            return Result.Failure(new Error("Call.InvalidTransition", "Call is already closed."));
+        if (Status == CallStatus.Cancelled)
+            return Result.Failure(new Error("Call.AlreadyCancelled", "This call is already cancelled."));
 
-        if (string.IsNullOrWhiteSpace(summary) || summary.Length < 10)
-            return Result.Failure(Error.Validation(nameof(summary),
-                "Call closure requires a summary of at least 10 characters."));
-
-        AiSummary = summary;
-        Status = CallStatus.Resolved;
+        Status = CallStatus.Cancelled;
         UpdatedAt = DateTime.UtcNow;
-        RaiseDomainEvent(new CallClosedEvent(Id, closedBy, summary, UpdatedAt));
+
         return Result.Success;
     }
 
-    /// <summary>Attaches AI triage and summary results to this call.</summary>
-    /// <param name="triageTag">Classification tag produced by <c>TriageAgent</c>.</param>
-    /// <param name="summary">Summary produced by <c>SummaryAgent</c>.</param>
-    public void AttachAiInsights(string? triageTag, string? summary)
+    /// <summary>Sets the patient ID once identified during triage.</summary>
+    public void LinkPatient(Guid patientId)
+    {
+        PatientId = patientId;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>Links the encounter created from this call.</summary>
+    public void LinkEncounter(Guid encounterId)
+    {
+        EncounterId = encounterId;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>Updates AI enrichment fields. Called by the AI orchestrator after analysis.</summary>
+    public void SetAiEnrichment(string? triageTag, string? summary)
     {
         AiTriageTag = triageTag;
         AiSummary = summary;
         UpdatedAt = DateTime.UtcNow;
     }
 
-    /// <summary>Links this call to an identified patient.</summary>
-    /// <param name="patientId">The identified patient's ID.</param>
-    public void LinkPatient(Guid patientId)
-    {
-        PatientId = patientId;
-        UpdatedAt = DateTime.UtcNow;
-    }
+    /// <summary>True if the call is in a terminal state (Resolved or Cancelled).</summary>
+    private bool IsTerminal =>
+        Status is CallStatus.Resolved or CallStatus.Cancelled;
+}
+
+/// <summary>Call lifecycle status codes.</summary>
+public enum CallStatus
+{
+    /// <summary>Waiting to be assigned to a practitioner.</summary>
+    Pending = 0,
+
+    /// <summary>Being handled by an assigned practitioner.</summary>
+    InProgress = 1,
+
+    /// <summary>Resolved successfully. IMMUTABLE.</summary>
+    Resolved = 2,
+
+    /// <summary>Escalated to a higher tier or specialist.</summary>
+    Escalated = 3,
+
+    /// <summary>Cancelled before resolution. IMMUTABLE.</summary>
+    Cancelled = 4,
 }

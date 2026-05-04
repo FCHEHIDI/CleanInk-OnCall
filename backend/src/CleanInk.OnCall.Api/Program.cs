@@ -52,17 +52,14 @@ try
 
     builder.Services.AddAuthorization(options =>
     {
-        // Clinical access — Médecin, IDE, Admin
-        options.AddPolicy("ClinicalAccess", policy =>
-            policy.RequireRole(HealthcareRoles.ClinicalRoles));
-
-        // Billing access — Secrétaire, Admin
-        options.AddPolicy("BillingAccess", policy =>
-            policy.RequireRole(HealthcareRoles.BillingRoles));
-
-        // Audit access — Admin only
-        options.AddPolicy("AuditAccess", policy =>
-            policy.RequireRole(HealthcareRoles.AuditRoles));
+        options.AddPolicy("ClinicalAccess",    p => p.RequireRole(AppRoles.ClinicalRoles));
+        options.AddPolicy("PrescriptionAccess", p => p.RequireRole(AppRoles.PrescriptionRoles));
+        options.AddPolicy("BillingAccess",     p => p.RequireRole(AppRoles.BillingRoles));
+        options.AddPolicy("SchedulingAccess",  p => p.RequireRole(AppRoles.SchedulingRoles));
+        options.AddPolicy("CallCenterAccess",  p => p.RequireRole(AppRoles.CallCenterRoles));
+        options.AddPolicy("EscalationAccess",  p => p.RequireRole(AppRoles.EscalationRoles));
+        options.AddPolicy("AuditAccess",       p => p.RequireRole(AppRoles.AuditRoles));
+        options.AddPolicy("HrAccess",          p => p.RequireRole(AppRoles.HrRoles));
     });
 
     // ── Controllers + Swagger ────────────────────────────────────────────────

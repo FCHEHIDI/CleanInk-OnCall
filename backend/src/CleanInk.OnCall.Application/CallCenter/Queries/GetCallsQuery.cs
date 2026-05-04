@@ -47,17 +47,19 @@ public sealed class GetCallsQueryHandler : IRequestHandler<GetCallsQuery, Result
             "Fetching calls page={Page} size={PageSize} customer={CustomerId} operator={OperatorId}",
             request.Page, request.PageSize, request.CustomerId, request.OperatorId);
 
-        var page = await _calls.GetPagedAsync(
+        var items = await _calls.GetPagedAsync(
             request.Page,
             Math.Min(request.PageSize, 100),
-            request.CustomerId,
-            request.OperatorId,
-            cancellationToken);
+            patientId: null,
+            assignedPractitionerId: request.OperatorId,
+            ct: cancellationToken);
 
-        var dtos = page.Items.Select(c => new CallDto(
+        var total = await _calls.CountAsync(assignedPractitionerId: request.OperatorId, ct: cancellationToken);
+
+        var dtos = items.Select(c => new CallDto(
             c.Id,
-            c.CustomerId,
-            c.OperatorId,
+            c.CreatedByUserId,
+            c.AssignedPractitionerId,
             c.Subject,
             c.Description,
             c.Status.ToString(),
@@ -67,6 +69,6 @@ public sealed class GetCallsQueryHandler : IRequestHandler<GetCallsQuery, Result
             c.UpdatedAt)).ToList();
 
         return Result<PagedResult<CallDto>>.Success(
-            new PagedResult<CallDto>(dtos, page.Page, page.PageSize, page.TotalCount));
+            new PagedResult<CallDto>(dtos, request.Page, Math.Min(request.PageSize, 100), total));
     }
 }

@@ -1,145 +1,152 @@
 using CleanInk.OnCall.Domain.Common;
+using CleanInk.OnCall.Domain.Events;
 using CleanInk.OnCall.Shared;
 
 namespace CleanInk.OnCall.Domain.Entities;
 
 /// <summary>
-/// Represents the payment status of an invoice.
-/// </summary>
-public enum InvoiceStatus
-{
-    /// <summary>Invoice has been issued but not yet paid.</summary>
-    Pending = 0,
-
-    /// <summary>Invoice has been fully paid.</summary>
-    Paid = 1,
-
-    /// <summary>Invoice is overdue.</summary>
-    Overdue = 2,
-
-    /// <summary>Invoice has been cancelled.</summary>
-    Cancelled = 3
-}
-
-/// <summary>
-/// Aggregate root representing a billing invoice in the CleanInk OnCall system.
-/// Amounts are stored in the smallest currency unit (e.g. euro cents).
+/// Billing aggregate root — FHIR R4 Invoice.
+///
+/// Domain invariants:
+/// 1. <see cref="AmountCents"/> must be strictly positive.
+/// 2. A "Paid" invoice CANNOT be cancelled — only a credit note (avoir) can be issued.
+/// 3. A "Cancelled" invoice is IMMUTABLE.
+/// 4. <see cref="Reference"/> is unique per tenant (DB constraint + domain).
 /// </summary>
 public sealed class Invoice : Entity<Guid>
 {
     private Invoice() { }
 
-    /// <summary>Gets the ID of the customer this invoice is for.</summary>
-    public Guid CustomerId { get; private set; }
-
-    /// <summary>Gets the optional ID of the call this invoice is linked to.</summary>
-    public Guid? CallId { get; private set; }
-
-    /// <summary>Gets the invoice reference number (human-readable, e.g. "INV-2024-0042").</summary>
+    public Guid PatientId { get; private set; }
+    public Guid? EncounterId { get; private set; }
+    public Guid? PractitionerId { get; private set; }
     public string Reference { get; private set; } = string.Empty;
 
-    /// <summary>Gets the amount in euro cents (e.g. 5000 = €50.00).</summary>
-    public long AmountCents { get; private set; }
+    /// <summary>Amount before VAT in euro cents. Must be &gt; 0.</summary>
+    public int AmountCents { get; private set; }
 
-    /// <summary>Gets the three-letter ISO 4217 currency code (e.g. "EUR").</summary>
-    public string Currency { get; private set; } = "EUR";
+    /// <summary>VAT amount in euro cents.</summary>
+    public int VatCents { get; private set; }
 
-    /// <summary>Gets the current payment status.</summary>
+    public int TotalCents => AmountCents + VatCents;
+    public decimal AmountEuros => AmountCents / 100m;
+
     public InvoiceStatus Status { get; private set; }
 
-    /// <summary>Gets the UTC due date of this invoice.</summary>
-    public DateTime DueDate { get; private set; }
+    public Guid? ThirdPartyPayerClaimId { get; private set; }
+    public string? PaymentMethod { get; private set; }
 
-    /// <summary>Gets the UTC timestamp when the invoice was created.</summary>
-    public DateTime CreatedAt { get; private set; }
-
-    /// <summary>Gets the UTC timestamp of the last update.</summary>
+    public DateTime IssuedAt { get; private set; }
+    public DateTime DueAt { get; private set; }
+    public DateTime? PaidAt { get; private set; }
     public DateTime UpdatedAt { get; private set; }
 
     /// <summary>
-    /// Factory method to create a new <see cref="Invoice"/>.
+    /// Factory — creates a new draft invoice.
+    /// Raises <see cref="InvoiceCreatedEvent"/>.
     /// </summary>
-    /// <param name="customerId">ID of the customer.</param>
-    /// <param name="reference">Unique human-readable reference.</param>
-    /// <param name="amountCents">Amount in smallest currency unit (must be > 0).</param>
-    /// <param name="dueDate">UTC due date (must be in the future).</param>
-    /// <param name="callId">Optional linked call ID.</param>
-    /// <param name="currency">ISO 4217 currency code, defaults to "EUR".</param>
-    /// <returns>A <see cref="Result{Invoice}"/> with the new invoice or validation errors.</returns>
     public static Result<Invoice> Create(
-        Guid customerId,
+        Guid patientId,
         string reference,
-        long amountCents,
-        DateTime dueDate,
-        Guid? callId = null,
-        string currency = "EUR")
+        int amountCents,
+        int vatCents = 0,
+        Guid? encounterId = null,
+        Guid? practitionerId = null,
+        DateTime? dueAt = null)
     {
-        if (customerId == Guid.Empty)
-            return Error.Validation(nameof(CustomerId), "CustomerId cannot be empty.");
+        if (patientId == Guid.Empty)
+            return Error.Validation(nameof(PatientId), "Patient ID is required.");
 
         if (string.IsNullOrWhiteSpace(reference))
-            return Error.Validation(nameof(Reference), "Reference is required.");
+            return Error.Validation(nameof(Reference), "Invoice reference is required.");
 
         if (amountCents <= 0)
-            return Error.Validation(nameof(AmountCents), "Amount must be greater than zero.");
+            return Error.Validation(nameof(AmountCents), "Invoice amount must be strictly positive.");
 
-        if (dueDate <= DateTime.UtcNow)
-            return Error.Validation(nameof(DueDate), "Due date must be in the future.");
+        if (vatCents < 0)
+            return Error.Validation(nameof(VatCents), "VAT amount cannot be negative.");
 
         var now = DateTime.UtcNow;
         var invoice = new Invoice
         {
             Id = Guid.NewGuid(),
-            CustomerId = customerId,
-            CallId = callId,
+            PatientId = patientId,
+            EncounterId = encounterId,
+            PractitionerId = practitionerId,
             Reference = reference.Trim(),
             AmountCents = amountCents,
-            Currency = currency.ToUpperInvariant(),
-            Status = InvoiceStatus.Pending,
-            DueDate = dueDate,
-            CreatedAt = now,
-            UpdatedAt = now
+            VatCents = vatCents,
+            Status = InvoiceStatus.Draft,
+            IssuedAt = now,
+            DueAt = dueAt ?? now.AddDays(30),
+            UpdatedAt = now,
         };
 
+        invoice.RaiseDomainEvent(new InvoiceCreatedEvent(invoice.Id, patientId, invoice.TotalCents, now));
         return invoice;
     }
 
-    /// <summary>Marks the invoice as paid.</summary>
-    /// <returns>A <see cref="Result"/> indicating success or failure.</returns>
-    public Result MarkAsPaid()
+    /// <summary>Finalizes the invoice (Draft → Issued).</summary>
+    public Result Issue()
     {
-        if (Status != InvoiceStatus.Pending)
-            return Result.Failure(new Error("Invoice.InvalidTransition",
-                $"Cannot mark invoice as paid from status '{Status}'."));
+        if (Status != InvoiceStatus.Draft)
+            return Result.Failure(new Error("Invoice.NotDraft", "Only a draft invoice can be issued."));
+
+        Status = InvoiceStatus.Issued;
+        UpdatedAt = DateTime.UtcNow;
+        return Result.Success;
+    }
+
+    /// <summary>Records payment. Invariant: paid invoice cannot be cancelled.</summary>
+    public Result MarkPaid(string paymentMethod)
+    {
+        if (Status is InvoiceStatus.Paid or InvoiceStatus.Cancelled)
+            return Result.Failure(new Error("Invoice.Immutable",
+                $"Cannot mark an invoice in '{Status}' state as paid."));
+
+        if (string.IsNullOrWhiteSpace(paymentMethod))
+            return Result.Failure(Error.Validation(nameof(paymentMethod), "Payment method is required."));
 
         Status = InvoiceStatus.Paid;
+        PaymentMethod = paymentMethod.Trim();
+        PaidAt = DateTime.UtcNow;
         UpdatedAt = DateTime.UtcNow;
+
+        RaiseDomainEvent(new InvoicePaidEvent(Id, PatientId, AmountCents, paymentMethod, DateTime.UtcNow));
         return Result.Success;
     }
 
-    /// <summary>Marks the invoice as overdue.</summary>
-    /// <returns>A <see cref="Result"/> indicating success or failure.</returns>
-    public Result MarkAsOverdue()
-    {
-        if (Status != InvoiceStatus.Pending)
-            return Result.Failure(new Error("Invoice.InvalidTransition",
-                $"Cannot mark invoice as overdue from status '{Status}'."));
-
-        Status = InvoiceStatus.Overdue;
-        UpdatedAt = DateTime.UtcNow;
-        return Result.Success;
-    }
-
-    /// <summary>Cancels the invoice.</summary>
-    /// <returns>A <see cref="Result"/> indicating success or failure.</returns>
-    public Result Cancel()
+    /// <summary>
+    /// Cancels the invoice.
+    /// Invariant: PAID invoice cannot be cancelled — issue a credit note (avoir) instead.
+    /// </summary>
+    public Result Cancel(string reason)
     {
         if (Status == InvoiceStatus.Paid)
-            return Result.Failure(new Error("Invoice.InvalidTransition",
-                "Cannot cancel a paid invoice."));
+            return Result.Failure(new Error("Invoice.PaidCannotCancel",
+                "A paid invoice cannot be cancelled. Issue a credit note (avoir) instead."));
+
+        if (Status == InvoiceStatus.Cancelled)
+            return Result.Failure(new Error("Invoice.AlreadyCancelled", "This invoice is already cancelled."));
 
         Status = InvoiceStatus.Cancelled;
         UpdatedAt = DateTime.UtcNow;
         return Result.Success;
     }
+
+    public void LinkThirdPartyPayerClaim(Guid claimId)
+    {
+        ThirdPartyPayerClaimId = claimId;
+        UpdatedAt = DateTime.UtcNow;
+    }
 }
+
+public enum InvoiceStatus
+{
+    Draft = 0,
+    Issued = 1,
+    Paid = 2,
+    Cancelled = 3,
+    Disputed = 4,
+}
+

@@ -44,11 +44,10 @@ public sealed class CloseCallCommandHandler : IRequestHandler<CloseCallCommand, 
         if (call is null)
             return Result.Failure(Error.NotFound("Call.NotFound", $"Call {request.CallId} not found."));
 
-        var result = call.Close(request.ClosedBy, request.Summary);
+        var result = call.Resolve(request.Summary);
         if (!result.IsSuccess) return result;
 
         _calls.Update(call);
-        await _calls.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Call {CallId} closed by {ClosedBy}.", request.CallId, request.ClosedBy);
         return Result.Success;

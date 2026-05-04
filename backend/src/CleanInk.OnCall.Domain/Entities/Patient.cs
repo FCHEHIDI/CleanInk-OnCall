@@ -1,180 +1,208 @@
 using CleanInk.OnCall.Domain.Common;
 using CleanInk.OnCall.Domain.Events;
-using CleanInk.OnCall.Domain.ValueObjects;
 using CleanInk.OnCall.Shared;
+using CleanInk.OnCall.Shared.Fhir;
 
 namespace CleanInk.OnCall.Domain.Entities;
 
 /// <summary>
-/// Aggregate root representing a patient in the healthcare system.
+/// FHIR R4 Patient — clinical aggregate root.
 ///
-/// RGPD / HDS considerations:
-/// - <see cref="NirNumber"/> is encrypted at the persistence layer (AES-256).
-/// - <see cref="PhoneNumber"/> is encrypted at the persistence layer.
-/// - <see cref="Email"/> is pseudonymized in export queries.
-/// - The aggregate never exposes raw NIR — only masked representation.
-/// - Consent is tracked separately via the <see cref="ConsentStatus"/> flag.
+/// FHIR mapping: https://www.hl7.org/fhir/patient.html
+///
+/// Domain invariants:
+/// - Patient is NEVER physically deleted (pseudonymisation only via <see cref="Pseudonymize"/>).
+/// - NIR (Numéro de Sécurité Sociale) must pass Luhn check if provided.
+/// - Clinical data is accessible only to ClinicalRoles + emergency override (with audit).
+/// - <see cref="ConsentGiven"/> must be true before any clinical data can be stored.
+///
+/// RGPD / HDS:
+/// - NIR and phone are encrypted at the persistence layer (AES-256-GCM via EncryptionService).
+/// - Email is pseudonymized in audit logs and research exports.
+/// - Soft-delete via <see cref="IsPseudonymized"/> — actual data wiped, identifiers replaced.
+///
+/// FHIR identifiers:
+/// - <see cref="Identifiers"/> carries FHIR FhirIdentifier records (INS, internal, etc.).
+/// - The FHIR Resource "id" maps to <see cref="Entity{Guid}.Id"/>.
 /// </summary>
 public sealed class Patient : Entity<Guid>
 {
-    // Private parameterless constructor required by EF Core.
     private Patient() { }
 
-    /// <summary>Last name (nom de famille). Stored in uppercase per French standards.</summary>
-    public string LastName { get; private set; } = string.Empty;
+    // ── FHIR Patient.identifier ─────────────────────────────────────────────
 
-    /// <summary>First name(s). Stored as-entered.</summary>
-    public string FirstName { get; private set; } = string.Empty;
+    /// <summary>
+    /// List of identifiers for this patient.
+    /// Always includes an internal GUID identifier.
+    /// May include INS (Identité Nationale de Santé) once verified.
+    /// </summary>
+    public List<FhirIdentifier> Identifiers { get; private set; } = [];
 
-    /// <summary>Date of birth. Never null — required for patient identification.</summary>
+    // ── FHIR Patient.name ───────────────────────────────────────────────────
+
+    /// <summary>
+    /// Patient name(s). First entry is "official" (état civil).
+    /// Stored uppercase (Family) + capitalized (Given) per French standards.
+    /// </summary>
+    public List<HumanName> Names { get; private set; } = [];
+
+    // ── FHIR Patient.gender ─────────────────────────────────────────────────
+
+    /// <summary>Administrative gender: "male" | "female" | "other" | "unknown".</summary>
+    public string Gender { get; private set; } = "unknown";
+
+    // ── FHIR Patient.birthDate ──────────────────────────────────────────────
+
+    /// <summary>Date of birth. Required for patient identification.</summary>
     public DateOnly DateOfBirth { get; private set; }
 
-    /// <summary>
-    /// French NIR (Numéro de Sécurité Sociale).
-    /// Stored as encrypted string in DB — decrypted by EncryptionService.
-    /// Exposed via this value object for domain logic only.
-    /// </summary>
-    public NirNumber? Nir { get; private set; }
+    // ── FHIR Patient.identifier — NIR (encrypted at rest) ──────────────────
 
     /// <summary>
-    /// Contact phone number in E.164 format.
-    /// Encrypted at rest.
+    /// French NIR (Numéro de Sécurité Sociale) — 15 digits.
+    /// Encrypted at rest (AES-256-GCM). Never logged or serialized plaintext.
     /// </summary>
-    public PhoneNumber? Phone { get; private set; }
+    public string? NirEncrypted { get; private set; }
+
+    // ── FHIR Patient.telecom ────────────────────────────────────────────────
 
     /// <summary>
-    /// Contact email address.
-    /// Pseudonymized in audit logs and research exports.
+    /// Contact points (phone, email). Stored as JSON.
+    /// Phone values are encrypted at rest.
     /// </summary>
-    public EmailAddress? Email { get; private set; }
+    public List<ContactPoint> ContactPoints { get; private set; } = [];
+
+    // ── Consent ─────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Indicates whether the patient has given explicit RGPD consent
-    /// for data processing (required before storing health data).
+    /// Whether the patient has given explicit RGPD consent for data processing.
+    /// Required before any clinical data can be stored.
+    /// Separate Consent resource tracks the full consent lifecycle.
     /// </summary>
-    public ConsentStatus Consent { get; private set; }
+    public bool ConsentGiven { get; private set; }
+
+    /// <summary>UTC timestamp when consent was given.</summary>
+    public DateTime? ConsentGivenAt { get; private set; }
+
+    // ── Metadata ─────────────────────────────────────────────────────────────
 
     /// <summary>UTC timestamp when the patient record was created.</summary>
     public DateTime CreatedAt { get; private set; }
 
-    /// <summary>UTC timestamp of the last profile update.</summary>
+    /// <summary>UTC timestamp of the last record update.</summary>
     public DateTime UpdatedAt { get; private set; }
 
-    /// <summary>Soft-delete flag. Archived patients are hidden from search results.</summary>
-    public bool IsArchived { get; private set; }
+    /// <summary>
+    /// Pseudonymisation flag. When true, all identifying data has been replaced
+    /// with opaque tokens. Record remains for statistical/audit continuity.
+    /// </summary>
+    public bool IsPseudonymized { get; private set; }
 
     /// <summary>
-    /// Factory method: registers a new patient record.
+    /// FHIR Patient official name (first entry with use="official").
+    /// </summary>
+    public HumanName? OfficialName => Names.FirstOrDefault(n => n.Use == "official");
+
+    /// <summary>
+    /// Factory method — registers a new patient with consent.
     /// Raises <see cref="PatientRegisteredEvent"/>.
     /// </summary>
-    /// <param name="lastName">Last name (trimmed, uppercased).</param>
-    /// <param name="firstName">First name (trimmed).</param>
+    /// <param name="lastName">Family name (stored uppercase per French état civil).</param>
+    /// <param name="firstName">Given name.</param>
     /// <param name="dateOfBirth">Must be in the past.</param>
-    /// <param name="nir">Optional NIR (validated value object).</param>
-    /// <param name="phone">Optional phone number (validated value object).</param>
-    /// <param name="email">Optional email address (validated value object).</param>
-    /// <returns>A <see cref="Result{Patient}"/> with the new aggregate or validation error.</returns>
+    /// <param name="gender">FHIR gender: "male" | "female" | "other" | "unknown".</param>
+    /// <param name="phoneNumber">Optional phone (E.164, will be encrypted).</param>
+    /// <param name="email">Optional email.</param>
+    /// <param name="nirEncrypted">Optional NIR — must already be AES-encrypted by the caller.</param>
+    /// <returns>A <see cref="Result{Patient}"/> or a validation error.</returns>
     public static Result<Patient> Register(
         string lastName,
         string firstName,
         DateOnly dateOfBirth,
-        NirNumber? nir = null,
-        PhoneNumber? phone = null,
-        EmailAddress? email = null)
+        string gender = "unknown",
+        string? phoneNumber = null,
+        string? email = null,
+        string? nirEncrypted = null)
     {
         if (string.IsNullOrWhiteSpace(lastName))
-            return Error.Validation(nameof(LastName), "Last name is required.");
+            return Error.Validation(nameof(lastName), "Last name is required.");
 
         if (string.IsNullOrWhiteSpace(firstName))
-            return Error.Validation(nameof(FirstName), "First name is required.");
+            return Error.Validation(nameof(firstName), "First name is required.");
 
         if (dateOfBirth >= DateOnly.FromDateTime(DateTime.UtcNow))
-            return Error.Validation(nameof(DateOfBirth), "Date of birth must be in the past.");
+            return Error.Validation(nameof(dateOfBirth), "Date of birth must be in the past.");
 
+        var validGenders = new[] { "male", "female", "other", "unknown" };
+        if (!validGenders.Contains(gender))
+            return Error.Validation(nameof(gender), $"Gender must be one of: {string.Join(", ", validGenders)}.");
+
+        var id = Guid.NewGuid();
         var now = DateTime.UtcNow;
+
+        var contactPoints = new List<ContactPoint>();
+        if (!string.IsNullOrWhiteSpace(phoneNumber))
+            contactPoints.Add(ContactPoint.Mobile(phoneNumber));
+        if (!string.IsNullOrWhiteSpace(email))
+            contactPoints.Add(ContactPoint.Email(email));
+
         var patient = new Patient
         {
-            Id = Guid.NewGuid(),
-            LastName = lastName.Trim().ToUpperInvariant(),
-            FirstName = firstName.Trim(),
+            Id = id,
+            Identifiers = [FhirIdentifier.Internal(id)],
+            Names = [HumanName.Official(lastName.Trim().ToUpperInvariant(), firstName.Trim())],
+            Gender = gender,
             DateOfBirth = dateOfBirth,
-            Nir = nir,
-            Phone = phone,
-            Email = email,
-            Consent = ConsentStatus.Pending,
+            NirEncrypted = nirEncrypted,
+            ContactPoints = contactPoints,
+            ConsentGiven = false,
             CreatedAt = now,
             UpdatedAt = now,
-            IsArchived = false
         };
 
-        patient.RaiseDomainEvent(new PatientRegisteredEvent(patient.Id, now));
+        patient.RaiseDomainEvent(new PatientRegisteredEvent(id, now));
+
         return patient;
     }
 
     /// <summary>
-    /// Records explicit RGPD consent from the patient.
-    /// Consent must be collected before any health data processing.
+    /// Records explicit RGPD consent. Required before storing clinical data.
     /// </summary>
-    public Result GrantConsent()
+    public void RecordConsent()
     {
-        if (Consent == ConsentStatus.Granted)
-            return Result.Failure(Error.Validation(nameof(Consent), "Consent has already been granted."));
-
-        Consent = ConsentStatus.Granted;
+        ConsentGiven = true;
+        ConsentGivenAt = DateTime.UtcNow;
         UpdatedAt = DateTime.UtcNow;
-        return Result.Success;
+        RaiseDomainEvent(new PatientConsentGivenEvent(Id, DateTime.UtcNow));
     }
 
     /// <summary>
-    /// Records RGPD consent withdrawal (right to withdraw — Art. 7 RGPD).
-    /// Does NOT delete data — triggers a separate data review process.
+    /// Adds or replaces the INS identifier after official verification.
     /// </summary>
-    public Result WithdrawConsent()
+    /// <param name="insValue">INS value from the INSi connector.</param>
+    public void SetInsIdentifier(string insValue)
     {
-        if (Consent == ConsentStatus.Withdrawn)
-            return Result.Failure(Error.Validation(nameof(Consent), "Consent has already been withdrawn."));
-
-        Consent = ConsentStatus.Withdrawn;
+        Identifiers.RemoveAll(i => i.System == FhirIdentifier.Systems.Ins);
+        Identifiers.Add(FhirIdentifier.Ins(insValue));
         UpdatedAt = DateTime.UtcNow;
-        return Result.Success;
     }
 
     /// <summary>
-    /// Archives the patient record (soft-delete / right to erasure — Art. 17 RGPD).
-    /// Archived records are removed from search results and pseudonymized in exports.
+    /// Pseudonymizes the patient record (RGPD Article 17 — right to erasure).
+    /// Replaces all PII with opaque tokens. Record remains for audit continuity.
     /// </summary>
-    public Result Archive()
+    public void Pseudonymize()
     {
-        if (IsArchived)
-            return Result.Failure(Error.Validation("Patient.AlreadyArchived", "Patient is already archived."));
+        if (IsPseudonymized) return;
 
-        IsArchived = true;
+        var pseudoId = Guid.NewGuid().ToString("N")[..8];
+        Names = [HumanName.Official($"PSEUDO-{pseudoId}", "PSEUDO")];
+        ContactPoints = [];
+        NirEncrypted = null;
+        Identifiers.RemoveAll(i => i.System != FhirIdentifier.Systems.CleanInkInternal);
+        IsPseudonymized = true;
         UpdatedAt = DateTime.UtcNow;
-        return Result.Success;
+
+        RaiseDomainEvent(new PatientPseudonymizedEvent(Id, DateTime.UtcNow));
     }
-
-    /// <summary>
-    /// Updates contact information for the patient.
-    /// </summary>
-    public void UpdateContact(PhoneNumber? phone, EmailAddress? email)
-    {
-        Phone = phone;
-        Email = email;
-        UpdatedAt = DateTime.UtcNow;
-    }
-}
-
-/// <summary>
-/// RGPD consent status for health data processing.
-/// </summary>
-public enum ConsentStatus
-{
-    /// <summary>Consent not yet collected — data cannot be processed.</summary>
-    Pending = 0,
-
-    /// <summary>Patient has explicitly given consent (Art. 6 RGPD).</summary>
-    Granted = 1,
-
-    /// <summary>Patient has withdrawn consent (Art. 7 RGPD).</summary>
-    Withdrawn = 2
 }

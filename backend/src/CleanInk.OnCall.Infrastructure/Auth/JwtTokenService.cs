@@ -50,9 +50,8 @@ public sealed class JwtTokenService : ITokenService
         {
             new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new Claim(JwtRegisteredClaimNames.Email, user.Email),
-            new Claim(JwtRegisteredClaimNames.GivenName, user.FirstName),
-            new Claim(JwtRegisteredClaimNames.FamilyName, user.LastName),
             new Claim(ClaimTypes.Role, user.Role),
+            new Claim("tenant_id", user.TenantId.ToString()),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
         };
 
@@ -72,6 +71,8 @@ public sealed class JwtTokenService : ITokenService
             AccessToken: tokenString,
             ExpiresAt: expiresAt,
             UserId: user.Id,
+            TenantId: user.TenantId,
+            TenantName: string.Empty,    // populated by caller if needed
             Email: user.Email,
             FullName: user.FullName,
             Role: user.Role);

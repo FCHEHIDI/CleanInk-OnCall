@@ -1,7 +1,6 @@
 using CleanInk.OnCall.Domain.Entities;
 using CleanInk.OnCall.Domain.Repositories;
 using CleanInk.OnCall.Infrastructure.Persistence;
-using CleanInk.OnCall.Shared;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -18,8 +17,6 @@ public sealed class CallRepository : ICallRepository
     /// <summary>
     /// Initializes a new instance of <see cref="CallRepository"/>.
     /// </summary>
-    /// <param name="db">The EF Core database context.</param>
-    /// <param name="logger">Logger instance.</param>
     public CallRepository(AppDbContext db, ILogger<CallRepository> logger)
     {
         _db = db;
@@ -34,30 +31,51 @@ public sealed class CallRepository : ICallRepository
     }
 
     /// <inheritdoc/>
-    public async Task<PagedResult<Call>> GetPagedAsync(
+    public async Task<IReadOnlyList<Call>> GetPagedAsync(
         int page,
         int pageSize,
-        Guid? customerId = null,
-        Guid? operatorId = null,
+        Guid? patientId = null,
+        Guid? assignedPractitionerId = null,
+        CallStatus? status = null,
         CancellationToken ct = default)
     {
         var query = _db.Calls.AsNoTracking();
 
-        if (customerId.HasValue)
-            query = query.Where(c => c.CustomerId == customerId.Value);
+        if (patientId.HasValue)
+            query = query.Where(c => c.PatientId == patientId.Value);
 
-        if (operatorId.HasValue)
-            query = query.Where(c => c.OperatorId == operatorId.Value);
+        if (assignedPractitionerId.HasValue)
+            query = query.Where(c => c.AssignedPractitionerId == assignedPractitionerId.Value);
 
-        var totalCount = await query.CountAsync(ct);
+        if (status.HasValue)
+            query = query.Where(c => c.Status == status.Value);
 
-        var items = await query
+        return await query
             .OrderByDescending(c => c.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync(ct);
+    }
 
-        return new PagedResult<Call>(items, page, pageSize, totalCount);
+    /// <inheritdoc/>
+    public async Task<int> CountAsync(
+        Guid? patientId = null,
+        Guid? assignedPractitionerId = null,
+        CallStatus? status = null,
+        CancellationToken ct = default)
+    {
+        var query = _db.Calls.AsNoTracking();
+
+        if (patientId.HasValue)
+            query = query.Where(c => c.PatientId == patientId.Value);
+
+        if (assignedPractitionerId.HasValue)
+            query = query.Where(c => c.AssignedPractitionerId == assignedPractitionerId.Value);
+
+        if (status.HasValue)
+            query = query.Where(c => c.Status == status.Value);
+
+        return await query.CountAsync(ct);
     }
 
     /// <inheritdoc/>
@@ -70,11 +88,5 @@ public sealed class CallRepository : ICallRepository
     public void Update(Call call)
     {
         _db.Calls.Update(call);
-    }
-
-    /// <inheritdoc/>
-    public Task<int> SaveChangesAsync(CancellationToken ct = default)
-    {
-        return _db.SaveChangesAsync(ct);
     }
 }

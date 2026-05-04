@@ -65,7 +65,7 @@ public sealed class AuthController : ControllerBase
     public async Task<IActionResult> Register([FromBody] RegisterRequest request, CancellationToken ct)
     {
         var result = await _mediator.Send(
-            new RegisterCommand(request.Email, request.Password, request.FirstName, request.LastName, request.Role),
+            new RegisterCommand(request.TenantId, request.Email, request.Password, request.FirstName, request.LastName, request.Role),
             ct);
 
         if (!result.IsSuccess)
@@ -84,7 +84,7 @@ public sealed class AuthController : ControllerBase
     /// </summary>
     [HttpGet("roles")]
     [ProducesResponseType(typeof(IReadOnlyList<string>), StatusCodes.Status200OK)]
-    public IActionResult GetRoles() => Ok(HealthcareRoles.All);
+    public IActionResult GetRoles() => Ok(AppRoles.All);
 }
 
 /// <summary>Request body for <c>POST /api/auth/login</c>.</summary>
@@ -92,6 +92,7 @@ public sealed record LoginRequest(string Email, string Password);
 
 /// <summary>Request body for <c>POST /api/auth/register</c>.</summary>
 public sealed record RegisterRequest(
+    Guid TenantId,
     string Email,
     string Password,
     string FirstName,

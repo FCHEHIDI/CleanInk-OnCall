@@ -11,8 +11,8 @@ public sealed class CreateCallCommandValidator : AbstractValidator<CreateCallCom
     /// <summary>Initializes a new instance with all validation rules.</summary>
     public CreateCallCommandValidator()
     {
-        RuleFor(x => x.CustomerId)
-            .NotEmpty().WithMessage("CustomerId is required.");
+        RuleFor(x => x.CreatedByUserId)
+            .NotEmpty().WithMessage("CreatedByUserId is required.");
 
         RuleFor(x => x.Subject)
             .NotEmpty().WithMessage("Subject is required.")

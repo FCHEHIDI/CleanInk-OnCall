@@ -5,21 +5,22 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CleanInk.OnCall.Infrastructure.Persistence.Configurations;
 
 /// <summary>
-/// EF Core configuration for the <see cref="AuditLog"/> entity.
-///
-/// The audit_logs table is append-only:
-/// - No EF update/delete operations should target this table.
-/// - In production, a DB role with INSERT-only permission should be used.
+/// EF Core configuration for the <see cref="AuditEvent"/> entity.
+/// Append-only — lives in cleanink_shared schema.
 /// </summary>
-public sealed class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
+public sealed class AuditLogConfiguration : IEntityTypeConfiguration<AuditEvent>
 {
     /// <inheritdoc/>
-    public void Configure(EntityTypeBuilder<AuditLog> builder)
+    public void Configure(EntityTypeBuilder<AuditEvent> builder)
     {
-        builder.ToTable("audit_logs");
+        builder.ToTable("audit_events", "cleanink_shared");
 
         builder.HasKey(a => a.Id);
         builder.Property(a => a.Id).ValueGeneratedNever();
+
+        builder.Property(a => a.TenantId)
+            .HasColumnName("tenant_id")
+            .IsRequired();
 
         builder.Property(a => a.ActorId)
             .HasColumnName("actor_id")
@@ -30,43 +31,57 @@ public sealed class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
             .IsRequired()
             .HasMaxLength(254);
 
+        builder.Property(a => a.ActorRole)
+            .HasColumnName("actor_role")
+            .HasMaxLength(50);
+
+        builder.Property(a => a.EventType)
+            .HasColumnName("event_type")
+            .IsRequired()
+            .HasMaxLength(100);
+
         builder.Property(a => a.Action)
             .HasColumnName("action")
             .IsRequired()
             .HasMaxLength(100);
 
-        builder.Property(a => a.EntityType)
-            .HasColumnName("entity_type")
+        builder.Property(a => a.ResourceType)
+            .HasColumnName("resource_type")
             .IsRequired()
             .HasMaxLength(100);
 
-        builder.Property(a => a.EntityId)
-            .HasColumnName("entity_id")
-            .IsRequired()
-            .HasMaxLength(100);
-
-        builder.Property(a => a.OldValues)
-            .HasColumnName("old_values")
-            .HasColumnType("jsonb")
+        builder.Property(a => a.ResourceId)
+            .HasColumnName("resource_id")
             .IsRequired(false);
 
-        builder.Property(a => a.NewValues)
-            .HasColumnName("new_values")
-            .HasColumnType("jsonb")
+        builder.Property(a => a.Outcome)
+            .HasColumnName("outcome")
+            .HasMaxLength(20);
+
+        builder.Property(a => a.IsEmergencyAccess)
+            .HasColumnName("is_emergency_access");
+
+        builder.Property(a => a.EmergencyJustification)
+            .HasColumnName("emergency_justification")
+            .HasMaxLength(1000)
             .IsRequired(false);
 
         builder.Property(a => a.IpAddress)
             .HasColumnName("ip_address")
-            .HasMaxLength(45) // IPv6 max = 39 chars
+            .HasMaxLength(45)
             .IsRequired(false);
 
-        builder.Property(a => a.OccurredAt)
-            .HasColumnName("occurred_at")
+        builder.Property(a => a.Details)
+            .HasColumnName("details")
+            .IsRequired(false);
+
+        builder.Property(a => a.RecordedAt)
+            .HasColumnName("recorded_at")
             .IsRequired();
 
-        // Performance indices for compliance queries.
         builder.HasIndex(a => a.ActorId).HasDatabaseName("ix_audit_actor_id");
-        builder.HasIndex(a => new { a.EntityType, a.EntityId }).HasDatabaseName("ix_audit_entity");
-        builder.HasIndex(a => a.OccurredAt).HasDatabaseName("ix_audit_occurred_at");
+        builder.HasIndex(a => new { a.ResourceType, a.ResourceId }).HasDatabaseName("ix_audit_resource");
+        builder.HasIndex(a => a.RecordedAt).HasDatabaseName("ix_audit_recorded_at");
+        builder.HasIndex(a => a.TenantId).HasDatabaseName("ix_audit_tenant_id");
     }
 }

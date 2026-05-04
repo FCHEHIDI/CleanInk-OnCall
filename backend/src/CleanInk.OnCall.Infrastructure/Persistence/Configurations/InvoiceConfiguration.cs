@@ -17,8 +17,9 @@ public sealed class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         builder.HasKey(i => i.Id);
         builder.Property(i => i.Id).ValueGeneratedNever();
 
-        builder.Property(i => i.CustomerId).IsRequired();
-        builder.Property(i => i.CallId);
+        builder.Property(i => i.PatientId).IsRequired();
+        builder.Property(i => i.EncounterId).IsRequired(false);
+        builder.Property(i => i.PractitionerId).IsRequired(false);
 
         builder.Property(i => i.Reference)
             .IsRequired()
@@ -27,22 +28,22 @@ public sealed class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         builder.HasIndex(i => i.Reference).IsUnique();
 
         builder.Property(i => i.AmountCents).IsRequired();
-
-        builder.Property(i => i.Currency)
-            .IsRequired()
-            .HasMaxLength(3)
-            .HasDefaultValue("EUR");
+        builder.Property(i => i.VatCents).IsRequired();
 
         builder.Property(i => i.Status)
             .IsRequired()
             .HasConversion<string>()
             .HasMaxLength(30);
 
-        builder.Property(i => i.DueDate).IsRequired();
-        builder.Property(i => i.CreatedAt).IsRequired();
+        builder.Property(i => i.PaymentMethod).HasMaxLength(100).IsRequired(false);
+        builder.Property(i => i.ThirdPartyPayerClaimId).IsRequired(false);
+
+        builder.Property(i => i.IssuedAt).IsRequired();
+        builder.Property(i => i.DueAt).IsRequired(false);
+        builder.Property(i => i.PaidAt).IsRequired(false);
         builder.Property(i => i.UpdatedAt).IsRequired();
 
-        builder.HasIndex(i => i.CustomerId);
+        builder.HasIndex(i => i.PatientId);
         builder.HasIndex(i => i.Status);
     }
 }

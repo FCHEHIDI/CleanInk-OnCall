@@ -31,18 +31,19 @@ public sealed class AuditController : ControllerBase
     public async Task<IActionResult> GetByEntity(
         string entityType, string entityId, CancellationToken ct)
     {
-        var entries = await _audit.GetByEntityAsync(entityType, entityId, ct);
+        if (!Guid.TryParse(entityId, out var resourceId))
+            return BadRequest(new { error = "entityId must be a valid GUID." });
+
+        var entries = await _audit.GetByResourceAsync(entityType, resourceId, ct);
         return Ok(entries.Select(e => new
         {
             e.Id,
             e.ActorEmail,
             e.Action,
-            e.EntityType,
-            e.EntityId,
-            e.OldValues,
-            e.NewValues,
+            e.ResourceType,
+            e.ResourceId,
             e.IpAddress,
-            e.OccurredAt
+            e.RecordedAt
         }));
     }
 
@@ -67,9 +68,9 @@ public sealed class AuditController : ControllerBase
             e.Id,
             e.ActorEmail,
             e.Action,
-            e.EntityType,
-            e.EntityId,
-            e.OccurredAt
+            e.ResourceType,
+            e.ResourceId,
+            e.RecordedAt
         }));
     }
 }

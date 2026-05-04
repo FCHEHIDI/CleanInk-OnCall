@@ -4,11 +4,13 @@ import { ApiService } from '../../core/services/api.service';
 
 export interface CallDto {
   id: string;
-  customerId: string;
+  createdByUserId: string;
+  assignedPractitionerId?: string;
+  encounterId?: string;
   patientId?: string;
-  operatorId?: string;
   subject: string;
   description: string;
+  priority: string;
   status: 'Pending' | 'InProgress' | 'Resolved' | 'Escalated' | 'Cancelled';
   aiTriageTag?: string;
   aiSummary?: string;
@@ -35,15 +37,19 @@ export class CallService {
     });
   }
 
-  assignCall(callId: string, operatorId: string): Observable<void> {
-    return this.api.patch<void>(`/api/calls/${callId}/assign`, { operatorId });
+  getById(id: string): Observable<CallDto> {
+    return this.api.get<CallDto>(`/api/calls/${id}`);
   }
 
-  escalateCall(callId: string, escalatedBy: string, reason: string): Observable<void> {
-    return this.api.patch<void>(`/api/calls/${callId}/escalate`, { escalatedBy, reason });
+  assignCall(callId: string, practitionerId: string): Observable<void> {
+    return this.api.patch<void>(`/api/calls/${callId}/assign`, { practitionerId });
   }
 
-  closeCall(callId: string, closedBy: string, summary: string): Observable<void> {
-    return this.api.patch<void>(`/api/calls/${callId}/close`, { closedBy, summary });
+  escalateCall(callId: string, reason: string): Observable<void> {
+    return this.api.patch<void>(`/api/calls/${callId}/escalate`, { reason });
+  }
+
+  closeCall(callId: string, resolutionNote?: string): Observable<void> {
+    return this.api.patch<void>(`/api/calls/${callId}/close`, { resolutionNote });
   }
 }

@@ -113,7 +113,7 @@ import { InvoiceService, InvoiceDto } from '../../shared/services/invoice.servic
 
     .fn-scene {
       position: relative;
-      min-height: 100%;
+      min-height: calc(100vh - 52px);
       overflow: hidden;
       margin: calc(-1 * var(--scene-pad-y, 1.75rem)) calc(-1 * var(--scene-pad-x, 2rem));
     }
@@ -121,8 +121,8 @@ import { InvoiceService, InvoiceDto } from '../../shared/services/invoice.servic
       position: absolute;
       inset: 0;
       background-size: cover;
-      background-position: center top;
-      opacity: .19;
+      background-position: center center;
+      opacity: .46;
       pointer-events: none;
       z-index: 0;
     }
@@ -131,9 +131,9 @@ import { InvoiceService, InvoiceDto } from '../../shared/services/invoice.servic
       inset: 0;
       background: linear-gradient(
         170deg,
-        rgba(4,7,15,.76) 0%,
-        rgba(8,14,28,.48) 50%,
-        rgba(6,10,22,.74) 100%
+        rgba(4,7,15,.60) 0%,
+        rgba(8,14,28,.35) 50%,
+        rgba(6,10,22,.58) 100%
       );
       pointer-events: none;
       z-index: 1;
@@ -215,14 +215,14 @@ export class BillingComponent implements OnInit {
       next: (res) => {
         this.invoices = res.items.map((inv) => ({
           id: inv.id.substring(0, 8).toUpperCase(),
-          client: inv.customerId,
-          amount: `€ ${inv.amount.toFixed(2)}`,
-          date: new Date(inv.createdAt).toLocaleDateString('fr-FR'),
+          client: inv.patientId,
+          amount: `€ ${(inv.amountCents / 100).toFixed(2)}`,
+          date: new Date(inv.issuedAt).toLocaleDateString('fr-FR'),
           status: this.mapStatus(inv.status),
         }));
-        const total = res.items.reduce((sum, i) => sum + i.amount, 0);
-        const pending = res.items.filter((i) => i.status === 'Issued').reduce((sum, i) => sum + i.amount, 0);
-        const overdue = res.items.filter((i) => i.status === 'Overdue').reduce((sum, i) => sum + i.amount, 0);
+        const total = res.items.reduce((sum, i) => sum + i.amountCents, 0);
+        const pending = res.items.filter((i) => i.status === 'Issued').reduce((sum, i) => sum + i.amountCents, 0);
+        const overdue = res.items.filter((i) => i.status === 'Cancelled').reduce((sum, i) => sum + i.amountCents, 0);
         this.stats = [
           { label: 'Total facturé (mois)', value: `€ ${total.toFixed(0)}` },
           { label: 'En attente',           value: `€ ${pending.toFixed(0)}` },

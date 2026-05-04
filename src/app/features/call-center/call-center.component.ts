@@ -114,7 +114,7 @@ interface CallEntry {
 
     .fn-scene {
       position: relative;
-      min-height: 100%;
+      min-height: calc(100vh - 52px);
       overflow: hidden;
       margin: calc(-1 * var(--scene-pad-y, 1.75rem)) calc(-1 * var(--scene-pad-x, 2rem));
     }
@@ -123,7 +123,7 @@ interface CallEntry {
       inset: 0;
       background-size: cover;
       background-position: center center;
-      opacity: .20;
+      opacity: .46;
       pointer-events: none;
       z-index: 0;
     }
@@ -131,10 +131,10 @@ interface CallEntry {
       position: absolute;
       inset: 0;
       background: linear-gradient(
-        135deg,
-        rgba(4,7,15,.80) 0%,
-        rgba(6,12,26,.50) 50%,
-        rgba(4,7,15,.72) 100%
+        160deg,
+        rgba(4,7,15,.60) 0%,
+        rgba(6,12,26,.34) 50%,
+        rgba(4,7,15,.58) 100%
       );
       pointer-events: none;
       z-index: 1;

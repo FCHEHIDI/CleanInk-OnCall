@@ -1,7 +1,6 @@
 using CleanInk.OnCall.Domain.Entities;
 using CleanInk.OnCall.Domain.Repositories;
 using CleanInk.OnCall.Infrastructure.Persistence;
-using CleanInk.OnCall.Shared;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -15,11 +14,7 @@ public sealed class InvoiceRepository : IInvoiceRepository
     private readonly AppDbContext _db;
     private readonly ILogger<InvoiceRepository> _logger;
 
-    /// <summary>
-    /// Initializes a new instance of <see cref="InvoiceRepository"/>.
-    /// </summary>
-    /// <param name="db">The EF Core database context.</param>
-    /// <param name="logger">Logger instance.</param>
+    /// <summary>Initializes a new instance of <see cref="InvoiceRepository"/>.</summary>
     public InvoiceRepository(AppDbContext db, ILogger<InvoiceRepository> logger)
     {
         _db = db;
@@ -34,26 +29,25 @@ public sealed class InvoiceRepository : IInvoiceRepository
     }
 
     /// <inheritdoc/>
-    public async Task<PagedResult<Invoice>> GetPagedAsync(
-        int page,
-        int pageSize,
-        Guid? customerId = null,
+    public async Task<Invoice?> GetByReferenceAsync(string reference, CancellationToken ct = default)
+        => await _db.Invoices.AsNoTracking().FirstOrDefaultAsync(i => i.Reference == reference, ct);
+
+    /// <inheritdoc/>
+    public async Task<bool> ReferenceExistsAsync(string reference, CancellationToken ct = default)
+        => await _db.Invoices.AnyAsync(i => i.Reference == reference, ct);
+
+    /// <inheritdoc/>
+    public async Task<IReadOnlyList<Invoice>> GetByPatientAsync(
+        Guid patientId,
+        InvoiceStatus? status = null,
         CancellationToken ct = default)
     {
-        var query = _db.Invoices.AsNoTracking();
+        var query = _db.Invoices.AsNoTracking().Where(i => i.PatientId == patientId);
 
-        if (customerId.HasValue)
-            query = query.Where(i => i.CustomerId == customerId.Value);
+        if (status.HasValue)
+            query = query.Where(i => i.Status == status.Value);
 
-        var totalCount = await query.CountAsync(ct);
-
-        var items = await query
-            .OrderByDescending(i => i.CreatedAt)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync(ct);
-
-        return new PagedResult<Invoice>(items, page, pageSize, totalCount);
+        return await query.OrderByDescending(i => i.IssuedAt).ToListAsync(ct);
     }
 
     /// <inheritdoc/>
@@ -66,11 +60,5 @@ public sealed class InvoiceRepository : IInvoiceRepository
     public void Update(Invoice invoice)
     {
         _db.Invoices.Update(invoice);
-    }
-
-    /// <inheritdoc/>
-    public Task<int> SaveChangesAsync(CancellationToken ct = default)
-    {
-        return _db.SaveChangesAsync(ct);
     }
 }

@@ -110,7 +110,7 @@ interface UserEntry {
 
     .fn-scene {
       position: relative;
-      min-height: 100%;
+      min-height: calc(100vh - 52px);
       overflow: hidden;
       margin: calc(-1 * var(--scene-pad-y, 1.75rem)) calc(-1 * var(--scene-pad-x, 2rem));
     }
@@ -119,7 +119,7 @@ interface UserEntry {
       inset: 0;
       background-size: cover;
       background-position: center center;
-      opacity: .18;
+      opacity: .44;
       pointer-events: none;
       z-index: 0;
     }
@@ -128,9 +128,9 @@ interface UserEntry {
       inset: 0;
       background: linear-gradient(
         125deg,
-        rgba(4,7,15,.82) 0%,
-        rgba(10,14,30,.50) 55%,
-        rgba(4,7,15,.78) 100%
+        rgba(4,7,15,.65) 0%,
+        rgba(10,14,30,.40) 55%,
+        rgba(4,7,15,.62) 100%
       );
       pointer-events: none;
       z-index: 1;

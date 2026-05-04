@@ -8,11 +8,10 @@ export interface PatientDto {
   lastName: string;
   firstName: string;
   dateOfBirth: string;
-  nirMasked?: string;
-  phoneMasked?: string;
-  emailMasked?: string;
-  consent: string;
-  isArchived: boolean;
+  gender: string;
+  nirEncrypted: boolean;
+  consentGiven: boolean;
+  isPseudonymized: boolean;
   createdAt: string;
 }
 

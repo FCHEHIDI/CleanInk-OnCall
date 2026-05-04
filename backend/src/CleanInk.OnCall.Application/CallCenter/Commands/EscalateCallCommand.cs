@@ -38,11 +38,10 @@ public sealed class EscalateCallCommandHandler : IRequestHandler<EscalateCallCom
         if (call is null)
             return Result.Failure(Error.NotFound("Call.NotFound", $"Call {request.CallId} not found."));
 
-        var result = call.Escalate(request.EscalatedBy, request.Reason);
+        var result = call.Escalate(request.Reason);
         if (!result.IsSuccess) return result;
 
         _calls.Update(call);
-        await _calls.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation(
             "Call {CallId} escalated by operator {OperatorId}. Reason: {Reason}",

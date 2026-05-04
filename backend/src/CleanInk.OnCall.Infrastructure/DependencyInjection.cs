@@ -18,16 +18,16 @@ namespace CleanInk.OnCall.Infrastructure;
 /// </summary>
 public static class DependencyInjection
 {
-    /// <summary>
-    /// Registers EF Core, repositories, AI clients, agents, auth services, and the orchestrator.
-    /// </summary>
-    /// <param name="services">The service collection to configure.</param>
-    /// <param name="configuration">Application configuration (appsettings.json, env vars).</param>
-    /// <returns>The same <paramref name="services"/> for chaining.</returns>
     public static IServiceCollection AddInfrastructure(
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        // ── HttpContextAccessor ─────────────────────────────────────────────────
+        services.AddHttpContextAccessor();
+
+        // ── Multi-tenant context ────────────────────────────────────────────────
+        services.AddScoped<ITenantContext, JwtTenantContext>();
+
         // ── EF Core + PostgreSQL ─────────────────────────────────────────────────
         services.AddDbContext<AppDbContext>(options =>
             options.UseNpgsql(
@@ -40,6 +40,7 @@ public static class DependencyInjection
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IPatientRepository, PatientRepository>();
         services.AddScoped<IAuditRepository, AuditRepository>();
+        services.AddScoped<IEncounterRepository, EncounterRepository>();
 
         // ── Auth services ─────────────────────────────────────────────────────────
         services.AddScoped<IPasswordHasher, BCryptPasswordHasher>();

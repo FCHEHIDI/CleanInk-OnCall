@@ -69,6 +69,7 @@ export class AuthService {
   }
 
   register(
+    tenantId: string,
     email: string,
     password: string,
     firstName: string,
@@ -77,6 +78,7 @@ export class AuthService {
   ): Observable<User> {
     return this.http
       .post<TokenResponse>(`${this.config.apiUrl}/api/auth/register`, {
+        tenantId,
         email,
         password,
         firstName,

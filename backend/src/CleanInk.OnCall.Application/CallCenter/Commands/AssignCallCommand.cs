@@ -33,11 +33,10 @@ public sealed class AssignCallCommandHandler : IRequestHandler<AssignCallCommand
         if (call is null)
             return Result.Failure(Error.NotFound("Call.NotFound", $"Call {request.CallId} not found."));
 
-        var result = call.Assign(request.OperatorId);
+        var result = call.AssignTo(request.OperatorId);
         if (!result.IsSuccess) return result;
 
         _calls.Update(call);
-        await _calls.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Call {CallId} assigned to operator {OperatorId}.",
             request.CallId, request.OperatorId);

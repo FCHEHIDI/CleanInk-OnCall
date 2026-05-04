@@ -1,0 +1,121 @@
+Tu es un directeur artistique et un architecte UI/UX senior.  
+Ta mission : générer la Direction Artistique complète + le Design System Angular complet pour CleanInk OnCall, un système vivant, nocturne, fractal, organique, protecteur.
+
+Respecte absolument l’univers suivant :
+
+1. Esthétique générale : “Fractal Nocturne”
+   - bleu velours nocturne (dominant)
+   - blanc nervure (accents)
+   - vert bioluminescent subtil (énergie)
+   - bleu-gris brume (atmosphère)
+   - noir translucide (ombres)
+
+2. Motifs directeurs :
+   - fractales organiques abstraites
+   - fractales naturelles
+   - nervures fines (plumes, feuilles, flux)
+   - ramifications (branches, fougères, réseaux)
+
+3. Symbolique :
+   - masque de chouette fractale (totem)
+   - vigilance, précision, sagesse
+   - technologie fusionnée avec la nature
+   - salle de contrôle au milieu d’une clairière nocturne
+
+4. Lumière :
+   - douce, diffuse, naturelle
+   - reflets velours
+   - halos subtils
+   - jamais de néons
+
+5. Matière :
+   - velours numérique
+   - membranes semi-translucides
+   - textures fractales subtiles
+
+6. AI :
+   - organisme endémique
+   - esprit-flux fractal
+   - pulsations, ramifications, nervures lumineuses
+   - présence protectrice, silencieuse, instinctive
+
+7. Rythme :
+   - fluide, solennel, rapide mais doux
+   - transitions organiques
+   - animations fractales (déploiement, pulsation, ramification)
+
+Ta tâche :
+Générer un **Design System Angular complet**, incluant :
+
+A. Invariants UI
+   - règles fondamentales
+   - proportions
+   - marges
+   - rythmes
+   - densité
+   - hiérarchie visuelle
+
+B. Tokens de design
+   - couleurs
+   - typographies
+   - ombres
+   - rayons
+   - opacités
+   - vitesses d’animation
+   - motifs fractals
+
+C. Composants Angular
+   - cartes (membranes velours)
+   - listes (nervures alignées)
+   - boutons (pétales lumineux)
+   - modales (halos translucides)
+   - onglets (ramifications)
+   - panneaux (surfaces velours fractales)
+   - loaders (fractales qui se déploient)
+   - overlays (brume nocturne)
+   - notifications (pulsations vert bioluminescent)
+
+D. Layout
+   - structure en clairière
+   - panneaux latéraux velours
+   - centre de contrôle
+   - zones respirantes
+   - motifs fractals en arrière-plan
+
+E. Animations
+   - déploiement fractal
+   - pulsation velours
+   - ramification progressive
+   - apparition de nervures
+   - transitions silencieuses
+
+F. Iconographie
+   - masque de chouette fractale
+   - glyphes inspirés des nervures
+   - symboles ramifiés
+   - pictogrammes organiques
+
+G. Salles (modules)
+   - Salle des Appels → fractales nerveuses
+   - Salle des Factures → fractales régulières
+   - Salle des Documents → fractales fibreuses
+   - Salle des Audits → fractales géométriques sacrées
+   - Salle des Agents AI → fractales vivantes
+
+H. Manifestation de l’AI
+   - flux de nervures lumineuses
+   - ramifications animées
+   - pulsations bleues velours
+   - glyphes de chouette fractale
+
+Format attendu :
+- description détaillée
+- structure hiérarchique
+- tokens utilisables immédiatement
+- composants décrits avec propriétés, états, interactions
+- animations décrites avec timings et easing
+- motifs fractals décrits en termes de style et d’usage
+- cohérence totale avec l’univers
+
+Ton objectif :
+Créer un **système UI complet**, cohérent, vivant, fractal, organique, protecteur, nocturne, inspiré par les nervures et les ramifications, incarnant la chouette fractale et l’AI endémique.

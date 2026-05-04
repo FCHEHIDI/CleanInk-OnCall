@@ -32,22 +32,31 @@ public sealed class PatientRepository : IPatientRepository
         CancellationToken cancellationToken = default)
     {
         pageSize = Math.Min(pageSize, 50);
-        var normalizedFragment = nameFragment.Trim().ToUpperInvariant();
 
+        // Names are stored as JSONB — use EF.Functions.ILike on the serialized column
+        // or filter in-memory after a scoped fetch. For now, load non-pseudonymized patients
+        // and filter in-memory (acceptable for typical tenant patient volumes).
         var query = _context.Patients
             .AsNoTracking()
-            .Where(p => !p.IsArchived &&
-                        (p.LastName.Contains(normalizedFragment) ||
-                         p.FirstName.ToUpper().Contains(normalizedFragment)));
+            .Where(p => !p.IsPseudonymized);
 
-        var totalCount = await query.CountAsync(cancellationToken);
+        var all = await query.ToListAsync(cancellationToken);
 
-        var items = await query
-            .OrderBy(p => p.LastName)
-            .ThenBy(p => p.FirstName)
+        var normalizedFragment = nameFragment.Trim().ToUpperInvariant();
+
+        var filtered = all
+            .Where(p => p.OfficialName is { } name &&
+                        (name.Family.ToUpperInvariant().Contains(normalizedFragment) ||
+                         name.Given.Any(g => g.ToUpperInvariant().Contains(normalizedFragment))))
+            .ToList();
+
+        var totalCount = filtered.Count;
+
+        var items = filtered
+            .OrderBy(p => p.OfficialName?.Family)
             .Skip((pageNumber - 1) * pageSize)
             .Take(pageSize)
-            .ToListAsync(cancellationToken);
+            .ToList();
 
         return (items, totalCount);
     }

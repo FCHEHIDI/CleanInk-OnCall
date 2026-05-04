@@ -1,6 +1,7 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 import { AuthGuard } from './core/guards/auth.guard';
+import { AdminGuard } from './core/guards/admin.guard';
 
 export const routes: Routes = [
   {
@@ -43,8 +44,30 @@ export const routes: Routes = [
       },
       {
         path: 'admin',
+        canActivate: [AdminGuard],
         loadChildren: () =>
           import('./features/admin/admin.module').then((m) => m.AdminModule),
+      },
+      {
+        path: 'patients',
+        loadChildren: () =>
+          import('./features/patients/patients.module').then((m) => m.PatientsModule),
+      },
+      {
+        path: 'audit',
+        canActivate: [AdminGuard],
+        loadChildren: () =>
+          import('./features/audit/audit.module').then((m) => m.AuditModule),
+      },
+      {
+        path: 'ai',
+        loadChildren: () =>
+          import('./features/ai/ai.module').then((m) => m.AiModule),
+      },
+      {
+        path: 'encounters',
+        loadChildren: () =>
+          import('./features/encounters/encounters.module').then((m) => m.EncountersModule),
       },
     ],
   },

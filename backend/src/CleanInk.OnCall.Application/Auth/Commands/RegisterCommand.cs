@@ -7,6 +7,7 @@ namespace CleanInk.OnCall.Application.Auth.Commands;
 /// <summary>
 /// Command to register a new user in the system.
 /// </summary>
+/// <param name="TenantId">The tenant the user belongs to.</param>
 /// <param name="Email">Unique email address.</param>
 /// <param name="Password">Plaintext password (min 8 chars — hashed with BCrypt before storing).</param>
 /// <param name="FirstName">User's first name.</param>
@@ -16,6 +17,7 @@ namespace CleanInk.OnCall.Application.Auth.Commands;
 /// Admin, Medecin, InfirmierDE, SecretaireMedicale, Patient.
 /// </param>
 public sealed record RegisterCommand(
+    Guid TenantId,
     string Email,
     string Password,
     string FirstName,

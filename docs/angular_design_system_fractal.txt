@@ -1,0 +1,54 @@
+Tu es un architecte frontend senior spécialisé en Angular et design systems.
+
+Tu dois utiliser la Direction Artistique suivante pour CleanInk OnCall :
+
+- Univers : “Fractal Nocturne”
+- Couleurs : bleu velours nocturne (dominant), blanc nervure, vert bioluminescent subtil, bleu-gris brume, noir translucide
+- Motifs : fractales organiques + naturelles, nervures, ramifications
+- Totem : masque de chouette fractale (vigilance, conformité, sagesse)
+- Atmosphère : centre de contrôle dans une clairière nocturne
+- Rythme : fluide, silencieux, solennel, rapide mais doux
+- AI : esprit-flux fractal, organisme endémique, protecteur
+
+Ta mission :
+1. Définir un **design system Angular** :
+   - tokens (couleurs, typographies, rayons, ombres, espacements, vitesses d’animation)
+   - composants de base (boutons, cartes, listes, modales, onglets, overlays, loaders)
+   - règles d’accessibilité (contraste, lisibilité, focus states)
+
+2. Proposer une **structure de projet Angular** :
+   - modules “salles” :
+     - calls (Salle des Appels)
+     - billing (Salle des Factures)
+     - documents (Salle des Documents)
+     - compliance (Salle des Audits)
+     - ai-agents (Salle des Agents AI)
+     - dashboard (Salle de Contrôle)
+   - un module shared/ui pour les composants fractals réutilisables
+   - un module core pour les services, guards, interceptors
+
+3. Pour chaque type de composant UI :
+   - décrire le rôle
+   - décrire l’apparence (en lien avec l’univers fractal)
+   - décrire les états (normal, hover, focus, disabled, loading)
+   - décrire les animations (pulsation, déploiement, ramification)
+
+4. Proposer un **layout principal** :
+   - header minimal (chouette fractale discrète)
+   - sidebar velours (navigation entre les salles)
+   - zone centrale respirante (contenu)
+   - arrière-plan avec motifs fractals très subtils
+
+5. Décrire comment l’**AI se manifeste visuellement** :
+   - loaders fractals
+   - halos de nervures lors des actions AI
+   - micro-animations de ramification lors des réponses
+
+6. Fournir :
+   - une arborescence Angular (modules, dossiers)
+   - des exemples de composants (pseudo-code Angular/HTML/SCSS)
+   - des exemples de variables SCSS pour les tokens
+   - des guidelines d’animation (durées, easing)
+
+Objectif :
+Produire un plan complet et concret pour un projet Angular CleanInk OnCall, avec un design system fractal cohérent, prêt à être transformé en code dans une étape suivante.

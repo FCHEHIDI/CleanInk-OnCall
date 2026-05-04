@@ -1,20 +1,20 @@
 using CleanInk.OnCall.Domain.Entities;
+using CleanInk.OnCall.Shared.Fhir;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using System.Text.Json;
 
 namespace CleanInk.OnCall.Infrastructure.Persistence.Configurations;
 
 /// <summary>
 /// EF Core configuration for the <see cref="Patient"/> aggregate.
-///
-/// HDS compliance:
-/// - NIR (column nir_number) and Phone (column phone_number) are tagged as sensitive.
-///   In a production HDS deployment, these columns would use PostgreSQL pgcrypto
-///   or transparent data encryption. For now, an application-level AES-256 value
-///   converter is the target (tracked as TODO).
+/// FHIR R4 — Names and ContactPoints stored as JSON columns.
+/// NirEncrypted stores already-encrypted NIR value.
 /// </summary>
 public sealed class PatientConfiguration : IEntityTypeConfiguration<Patient>
 {
+    private static readonly JsonSerializerOptions _json = new(JsonSerializerDefaults.Web);
+
     /// <inheritdoc/>
     public void Configure(EntityTypeBuilder<Patient> builder)
     {
@@ -23,47 +23,53 @@ public sealed class PatientConfiguration : IEntityTypeConfiguration<Patient>
         builder.HasKey(p => p.Id);
         builder.Property(p => p.Id).ValueGeneratedNever();
 
-        builder.Property(p => p.LastName)
-            .IsRequired()
-            .HasMaxLength(100)
-            .HasColumnName("last_name");
+        // FHIR Lists stored as JSONB.
+        builder.Property(p => p.Names)
+            .HasColumnName("names")
+            .HasColumnType("jsonb")
+            .HasConversion(
+                v => JsonSerializer.Serialize(v, _json),
+                raw => JsonSerializer.Deserialize<List<HumanName>>(raw, _json) ?? new());
 
-        builder.Property(p => p.FirstName)
-            .IsRequired()
-            .HasMaxLength(100)
-            .HasColumnName("first_name");
+        builder.Property(p => p.Identifiers)
+            .HasColumnName("identifiers")
+            .HasColumnType("jsonb")
+            .HasConversion(
+                v => JsonSerializer.Serialize(v, _json),
+                raw => JsonSerializer.Deserialize<List<FhirIdentifier>>(raw, _json) ?? new());
+
+        builder.Property(p => p.ContactPoints)
+            .HasColumnName("contact_points")
+            .HasColumnType("jsonb")
+            .HasConversion(
+                v => JsonSerializer.Serialize(v, _json),
+                raw => JsonSerializer.Deserialize<List<ContactPoint>>(raw, _json) ?? new());
+
+        builder.Property(p => p.Gender)
+            .HasColumnName("gender")
+            .HasMaxLength(20);
 
         builder.Property(p => p.DateOfBirth)
             .IsRequired()
             .HasColumnName("date_of_birth");
 
-        // NIR is stored as its string value. TODO: add AES-256 value converter.
-        builder.Property(p => p.Nir)
-            .HasColumnName("nir_number")
-            .HasMaxLength(20)
-            .HasConversion(
-                nir => nir == null ? null : nir.Value,
-                raw => raw == null ? null : Domain.ValueObjects.NirNumber.Create(raw).Value);
+        builder.Property(p => p.NirEncrypted)
+            .HasColumnName("nir_encrypted")
+            .HasMaxLength(500)
+            .IsRequired(false);
 
-        // Phone stored as E.164 string. TODO: add AES-256 value converter.
-        builder.Property(p => p.Phone)
-            .HasColumnName("phone_number")
-            .HasMaxLength(20)
-            .HasConversion(
-                phone => phone == null ? null : phone.Value,
-                raw => raw == null ? null : Domain.ValueObjects.PhoneNumber.Create(raw).Value);
-
-        builder.Property(p => p.Email)
-            .HasColumnName("email")
-            .HasMaxLength(254)
-            .HasConversion(
-                email => email == null ? null : email.Value,
-                raw => raw == null ? null : Domain.ValueObjects.EmailAddress.Create(raw).Value);
-
-        builder.Property(p => p.Consent)
+        builder.Property(p => p.ConsentGiven)
             .IsRequired()
-            .HasColumnName("consent_status")
-            .HasConversion<string>();
+            .HasColumnName("consent_given");
+
+        builder.Property(p => p.ConsentGivenAt)
+            .HasColumnName("consent_given_at")
+            .IsRequired(false);
+
+        builder.Property(p => p.IsPseudonymized)
+            .IsRequired()
+            .HasColumnName("is_pseudonymized")
+            .HasDefaultValue(false);
 
         builder.Property(p => p.CreatedAt)
             .IsRequired()
@@ -73,18 +79,6 @@ public sealed class PatientConfiguration : IEntityTypeConfiguration<Patient>
             .IsRequired()
             .HasColumnName("updated_at");
 
-        builder.Property(p => p.IsArchived)
-            .IsRequired()
-            .HasColumnName("is_archived")
-            .HasDefaultValue(false);
-
-        // Index for name search performance.
-        builder.HasIndex(p => p.LastName).HasDatabaseName("ix_patients_last_name");
-
-        // Unique index on NIR (when not null) — prevents duplicate registration.
-        builder.HasIndex(p => p.Nir)
-            .IsUnique()
-            .HasFilter("nir_number IS NOT NULL")
-            .HasDatabaseName("ix_patients_nir_unique");
+        builder.HasIndex(p => p.ConsentGiven);
     }
 }

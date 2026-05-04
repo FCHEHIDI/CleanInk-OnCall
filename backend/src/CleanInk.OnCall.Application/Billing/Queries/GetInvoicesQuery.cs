@@ -48,24 +48,22 @@ public sealed class GetInvoicesQueryHandler
             "Fetching invoices page={Page} size={PageSize} customer={CustomerId}",
             request.Page, request.PageSize, request.CustomerId);
 
-        var page = await _invoices.GetPagedAsync(
-            request.Page,
-            Math.Min(request.PageSize, 100),
-            request.CustomerId,
-            cancellationToken);
+        var items = await _invoices.GetByPatientAsync(
+            request.CustomerId ?? Guid.Empty,
+            ct: cancellationToken);
 
-        var dtos = page.Items.Select(i => new InvoiceDto(
+        var dtos = items.Select(i => new InvoiceDto(
             i.Id,
-            i.CustomerId,
-            i.CallId,
+            i.PatientId,
+            i.EncounterId,
             i.Reference,
             i.AmountCents,
-            i.Currency,
+            i.VatCents,
             i.Status.ToString(),
-            i.DueDate,
-            i.CreatedAt)).ToList();
+            i.IssuedAt,
+            i.DueAt)).ToList();
 
         return Result<PagedResult<InvoiceDto>>.Success(
-            new PagedResult<InvoiceDto>(dtos, page.Page, page.PageSize, page.TotalCount));
+            new PagedResult<InvoiceDto>(dtos, request.Page, Math.Min(request.PageSize, 100), dtos.Count));
     }
 }

@@ -3,38 +3,33 @@ using CleanInk.OnCall.Domain.Entities;
 namespace CleanInk.OnCall.Domain.Repositories;
 
 /// <summary>
-/// Repository for audit log entries.
-/// Append-only: entries are never updated or deleted programmatically.
+/// Append-only repository for FHIR AuditEvent records.
+/// Entries are NEVER updated or deleted — append-only by design and enforced at DB level.
+/// Lives in the <c>cleanink_shared</c> schema for cross-tenant compliance queries.
 /// </summary>
 public interface IAuditRepository
 {
-    /// <summary>
-    /// Persists a new audit log entry (append-only).
-    /// </summary>
-    Task AddAsync(AuditLog entry, CancellationToken cancellationToken = default);
+    /// <summary>Persists a new audit event (append-only).</summary>
+    Task AddAsync(AuditEvent auditEvent, CancellationToken ct = default);
 
-    /// <summary>
-    /// Retrieves audit entries for a specific entity, ordered by most recent first.
-    /// </summary>
-    /// <param name="entityType">Entity type name (e.g. "Call", "Patient").</param>
-    /// <param name="entityId">Entity ID as a string.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    Task<IReadOnlyList<AuditLog>> GetByEntityAsync(
-        string entityType,
-        string entityId,
-        CancellationToken cancellationToken = default);
+    /// <summary>Bulk-appends multiple audit events (e.g. dispatched from domain event handlers).</summary>
+    Task AddRangeAsync(IEnumerable<AuditEvent> auditEvents, CancellationToken ct = default);
 
-    /// <summary>
-    /// Retrieves all audit entries by a specific actor, ordered by most recent first.
-    /// Used for CNIL compliance investigations.
-    /// </summary>
-    /// <param name="actorId">ID of the user whose actions are being reviewed.</param>
-    /// <param name="from">Optional start of date range.</param>
-    /// <param name="to">Optional end of date range.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    Task<IReadOnlyList<AuditLog>> GetByActorAsync(
+    /// <summary>Retrieves audit events for a specific resource, ordered by most recent first.</summary>
+    Task<IReadOnlyList<AuditEvent>> GetByResourceAsync(
+        string resourceType,
+        Guid resourceId,
+        CancellationToken ct = default);
+
+    /// <summary>Retrieves audit events by actor, ordered by most recent first. For CNIL compliance investigations.</summary>
+    Task<IReadOnlyList<AuditEvent>> GetByActorAsync(
         Guid actorId,
         DateTime? from = null,
         DateTime? to = null,
-        CancellationToken cancellationToken = default);
+        CancellationToken ct = default);
+
+    /// <summary>Retrieves all emergency access events pending review.</summary>
+    Task<IReadOnlyList<AuditEvent>> GetPendingEmergencyAccessReviewsAsync(
+        Guid tenantId,
+        CancellationToken ct = default);
 }

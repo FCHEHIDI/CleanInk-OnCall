@@ -1,7 +1,6 @@
 using CleanInk.OnCall.Application.Patients.DTOs;
 using CleanInk.OnCall.Domain.Entities;
 using CleanInk.OnCall.Domain.Repositories;
-using CleanInk.OnCall.Domain.ValueObjects;
 using CleanInk.OnCall.Shared;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -48,39 +47,12 @@ public sealed class RegisterPatientCommandHandler : IRequestHandler<RegisterPati
     public async Task<Result<PatientDto>> Handle(
         RegisterPatientCommand request, CancellationToken cancellationToken)
     {
-        // Resolve optional value objects from raw strings.
-        NirNumber? nir = null;
-        PhoneNumber? phone = null;
-        EmailAddress? email = null;
-
-        if (!string.IsNullOrWhiteSpace(request.Nir))
-        {
-            var nirResult = NirNumber.Create(request.Nir);
-            if (!nirResult.IsSuccess) return Result<PatientDto>.Failure(nirResult.Error);
-            nir = nirResult.Value;
-        }
-
-        if (!string.IsNullOrWhiteSpace(request.Phone))
-        {
-            var phoneResult = PhoneNumber.Create(request.Phone);
-            if (!phoneResult.IsSuccess) return Result<PatientDto>.Failure(phoneResult.Error);
-            phone = phoneResult.Value;
-        }
-
-        if (!string.IsNullOrWhiteSpace(request.Email))
-        {
-            var emailResult = EmailAddress.Create(request.Email);
-            if (!emailResult.IsSuccess) return Result<PatientDto>.Failure(emailResult.Error);
-            email = emailResult.Value;
-        }
-
         var patientResult = Patient.Register(
             request.LastName,
             request.FirstName,
             request.DateOfBirth,
-            nir,
-            phone,
-            email);
+            phoneNumber: request.Phone,
+            email: request.Email);
 
         if (!patientResult.IsSuccess) return Result<PatientDto>.Failure(patientResult.Error);
 
@@ -89,7 +61,9 @@ public sealed class RegisterPatientCommandHandler : IRequestHandler<RegisterPati
         await _patients.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Patient {PatientId} registered: {LastName} {FirstName}",
-            patient.Id, patient.LastName, patient.FirstName);
+            patient.Id,
+            patient.OfficialName?.Family,
+            patient.OfficialName?.Given.FirstOrDefault());
 
         return Result<PatientDto>.Success(PatientDto.FromEntity(patient));
     }

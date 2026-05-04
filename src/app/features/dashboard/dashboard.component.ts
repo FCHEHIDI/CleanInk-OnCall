@@ -153,7 +153,7 @@ interface Activity {
     /* ── Scene system ──────────────────────────────── */
     .fn-scene {
       position: relative;
-      min-height: 100%;
+      min-height: calc(100vh - 52px);
       overflow: hidden;
       /* bleed to layout edges */
       margin: calc(-1 * var(--scene-pad-y, 1.75rem)) calc(-1 * var(--scene-pad-x, 2rem));
@@ -162,8 +162,8 @@ interface Activity {
       position: absolute;
       inset: 0;
       background-size: cover;
-      background-position: center top;
-      opacity: .22;
+      background-position: center center;
+      opacity: .48;
       pointer-events: none;
       z-index: 0;
     }
@@ -172,9 +172,9 @@ interface Activity {
       inset: 0;
       background: linear-gradient(
         150deg,
-        rgba(4,7,15,.78) 0%,
-        rgba(6,12,26,.55) 45%,
-        rgba(9,15,34,.70) 100%
+        rgba(4,7,15,.62) 0%,
+        rgba(6,12,26,.38) 45%,
+        rgba(9,15,34,.58) 100%
       );
       pointer-events: none;
       z-index: 1;

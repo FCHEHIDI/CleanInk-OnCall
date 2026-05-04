@@ -10,11 +10,11 @@ namespace CleanInk.OnCall.Application.CallCenter.Commands;
 /// <summary>
 /// Command to create a new inbound call.
 /// </summary>
-/// <param name="CustomerId">ID of the customer placing the call.</param>
+/// <param name="CreatedByUserId">ID of the user creating the call.</param>
 /// <param name="Subject">Short subject line (max 200 chars).</param>
 /// <param name="Description">Full call description.</param>
 public record CreateCallCommand(
-    Guid CustomerId,
+    Guid CreatedByUserId,
     string Subject,
     string Description) : IRequest<Result<CallDto>>;
 
@@ -43,10 +43,10 @@ public sealed class CreateCallCommandHandler : IRequestHandler<CreateCallCommand
         CancellationToken cancellationToken)
     {
         _logger.LogInformation(
-            "Creating call for customer {CustomerId} with subject '{Subject}'",
-            request.CustomerId, request.Subject);
+            "Creating call by user {CreatedByUserId} with subject '{Subject}'",
+            request.CreatedByUserId, request.Subject);
 
-        var callResult = Call.Create(request.CustomerId, request.Subject, request.Description);
+        var callResult = Call.Create(request.CreatedByUserId, request.Subject, request.Description);
         if (callResult.IsFailure)
         {
             _logger.LogWarning("Call creation validation failed: {Error}", callResult.Error.Description);
@@ -55,14 +55,13 @@ public sealed class CreateCallCommandHandler : IRequestHandler<CreateCallCommand
 
         var call = callResult.Value;
         await _calls.AddAsync(call, cancellationToken);
-        await _calls.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Call {CallId} created successfully", call.Id);
 
         return Result<CallDto>.Success(new CallDto(
             call.Id,
-            call.CustomerId,
-            call.OperatorId,
+            call.CreatedByUserId,
+            call.AssignedPractitionerId,
             call.Subject,
             call.Description,
             call.Status.ToString(),

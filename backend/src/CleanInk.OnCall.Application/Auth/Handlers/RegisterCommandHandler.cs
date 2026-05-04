@@ -42,10 +42,10 @@ public sealed class RegisterCommandHandler : IRequestHandler<RegisterCommand, Re
         RegisterCommand request,
         CancellationToken cancellationToken)
     {
-        // Validate the role is a known healthcare role.
-        if (!HealthcareRoles.IsValid(request.Role))
+        // Validate the role is a known role.
+        if (!AppRoles.IsValid(request.Role))
             return Error.Validation(nameof(request.Role),
-                $"'{request.Role}' is not a recognised role. Valid roles: {string.Join(", ", HealthcareRoles.All)}");
+                $"'{request.Role}' is not a recognised role.");
 
         // Check email uniqueness.
         var normalizedEmail = request.Email.Trim().ToLowerInvariant();
@@ -58,6 +58,7 @@ public sealed class RegisterCommandHandler : IRequestHandler<RegisterCommand, Re
 
         // Create the domain entity via factory (validates invariants).
         var userResult = User.Create(
+            request.TenantId,
             normalizedEmail,
             request.FirstName,
             request.LastName,

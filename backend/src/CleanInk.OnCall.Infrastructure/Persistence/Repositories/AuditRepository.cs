@@ -17,36 +17,49 @@ public sealed class AuditRepository : IAuditRepository
     public AuditRepository(AppDbContext context) => _context = context;
 
     /// <inheritdoc/>
-    public async Task AddAsync(AuditLog entry, CancellationToken cancellationToken = default) =>
-        await _context.AuditLogs.AddAsync(entry, cancellationToken);
+    public async Task AddAsync(AuditEvent auditEvent, CancellationToken ct = default) =>
+        await _context.AuditEvents.AddAsync(auditEvent, ct);
 
     /// <inheritdoc/>
-    public async Task<IReadOnlyList<AuditLog>> GetByEntityAsync(
-        string entityType,
-        string entityId,
-        CancellationToken cancellationToken = default) =>
-        await _context.AuditLogs
+    public async Task AddRangeAsync(IEnumerable<AuditEvent> auditEvents, CancellationToken ct = default) =>
+        await _context.AuditEvents.AddRangeAsync(auditEvents, ct);
+
+    /// <inheritdoc/>
+    public async Task<IReadOnlyList<AuditEvent>> GetByResourceAsync(
+        string resourceType,
+        Guid resourceId,
+        CancellationToken ct = default) =>
+        await _context.AuditEvents
             .AsNoTracking()
-            .Where(a => a.EntityType == entityType && a.EntityId == entityId)
-            .OrderByDescending(a => a.OccurredAt)
-            .ToListAsync(cancellationToken);
+            .Where(a => a.ResourceType == resourceType && a.ResourceId == resourceId)
+            .OrderByDescending(a => a.RecordedAt)
+            .ToListAsync(ct);
 
     /// <inheritdoc/>
-    public async Task<IReadOnlyList<AuditLog>> GetByActorAsync(
+    public async Task<IReadOnlyList<AuditEvent>> GetByActorAsync(
         Guid actorId,
         DateTime? from = null,
         DateTime? to = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken ct = default)
     {
-        var query = _context.AuditLogs
+        var query = _context.AuditEvents
             .AsNoTracking()
             .Where(a => a.ActorId == actorId);
 
-        if (from.HasValue) query = query.Where(a => a.OccurredAt >= from.Value);
-        if (to.HasValue) query = query.Where(a => a.OccurredAt <= to.Value);
+        if (from.HasValue) query = query.Where(a => a.RecordedAt >= from.Value);
+        if (to.HasValue) query = query.Where(a => a.RecordedAt <= to.Value);
 
-        return await query
-            .OrderByDescending(a => a.OccurredAt)
-            .ToListAsync(cancellationToken);
+        return await query.OrderByDescending(a => a.RecordedAt).ToListAsync(ct);
     }
+
+    /// <inheritdoc/>
+    public async Task<IReadOnlyList<AuditEvent>> GetPendingEmergencyAccessReviewsAsync(
+        Guid tenantId,
+        CancellationToken ct = default) =>
+        await _context.AuditEvents
+            .AsNoTracking()
+            .Where(a => a.TenantId == tenantId && a.IsEmergencyAccess)
+            .OrderByDescending(a => a.RecordedAt)
+            .ToListAsync(ct);
 }
+
