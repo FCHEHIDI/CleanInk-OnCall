@@ -1,6 +1,119 @@
-version: "3.9"
+# ─────────────────────────────────────────────────────────────────────────────
+# Segmentation réseau — 3 zones de confiance (HDS-ready)
+#
+#   fn-edge   │ Traefik seul — seule zone exposée à l'extérieur
+#   fn-app    │ API ↔ Traefik — logique applicative, pas d'accès DB direct
+#   fn-data   │ API ↔ Postgres — zone critique, 0 accès depuis fn-edge
+#
+#   Internet → Traefik (fn-edge) → API (fn-app) → Postgres (fn-data)
+#                    ✗ ──────────────────────────────────────────────
+#
+# Secrets : charger depuis un fichier .env (voir .env.example)
+#   cp .env.example .env && éditez les valeurs
+# ─────────────────────────────────────────────────────────────────────────────
+
+networks:
+  fn-edge:
+    driver: bridge
+    name: cleanink_edge
+  fn-app:
+    driver: bridge
+    name: cleanink_app
+    internal: true        # aucun accès internet direct depuis l'API
+  fn-data:
+    driver: bridge
+    name: cleanink_data
+    internal: true        # zone critique — Postgres injoignable depuis fn-edge
 
 services:
+
+  # ── EDGE : reverse proxy TLS ──────────────────────────────────────────────
+  traefik:
+    image: traefik:v3.1
+    container_name: cleanink_traefik
+    restart: unless-stopped
+    command:
+      # Providers
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=cleanink_app"
+      # Entrypoints
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
+      - "--entrypoints.websecure.address=:443"
+      # Dashboard (accès restreint à localhost — désactiver en prod)
+      - "--api.dashboard=true"
+      - "--entrypoints.traefik.address=:8080"
+      # Logs
+      - "--log.level=INFO"
+      - "--accesslog=true"
+      # TLS — Production : décommenter le bloc ACME ci-dessous
+      # et remplacer la valeur ACME_EMAIL dans .env
+      # - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}"
+      # - "--certificatesresolvers.letsencrypt.acme.storage=/certs/acme.json"
+      # - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "127.0.0.1:8080:8080"   # dashboard uniquement accessible depuis l'hôte
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - traefik_certs:/certs
+    networks:
+      - fn-edge
+      - fn-app
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dashboard.rule=Host(`traefik.localhost`)"
+      - "traefik.http.routers.dashboard.service=api@internal"
+      - "traefik.http.routers.dashboard.entrypoints=traefik"
+
+  # ── APP : API .NET ─────────────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cleanink_api
+    restart: unless-stopped
+    # Aucun port exposé directement — tout le trafic passe par Traefik
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: "http://+:80"
+      ConnectionStrings__Default: "Host=postgres;Port=5432;Database=cleanink_oncall;Username=cleanink;Password=${POSTGRES_PASSWORD}"
+      Jwt__SecretKey: "${JWT_SECRET_KEY}"
+      Jwt__Issuer: "CleanInkOnCall"
+      Jwt__Audience: "CleanInkOnCallClients"
+      Claude__ApiKey: "${CLAUDE_API_KEY:-}"
+      AzureOpenAI__ApiKey: "${AZURE_OPENAI_API_KEY:-}"
+      AzureOpenAI__Endpoint: "${AZURE_OPENAI_ENDPOINT:-}"
+      AzureOpenAI__DeploymentName: "${AZURE_OPENAI_DEPLOYMENT:-gpt-4o}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - fn-app     # reçoit le trafic de Traefik
+      - fn-data    # atteint Postgres
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=cleanink_app"
+      - "traefik.http.routers.api.rule=Host(`${API_HOST:-api.localhost}`)"
+      - "traefik.http.routers.api.entrypoints=websecure"
+      - "traefik.http.routers.api.tls=true"
+      # Production ACME — décommenter quand le DNS est configuré :
+      # - "traefik.http.routers.api.tls.certresolver=letsencrypt"
+      - "traefik.http.services.api.loadbalancer.server.port=80"
+      # Security headers OWASP
+      - "traefik.http.middlewares.sec-headers.headers.stsSeconds=63072000"
+      - "traefik.http.middlewares.sec-headers.headers.stsIncludeSubdomains=true"
+      - "traefik.http.middlewares.sec-headers.headers.stsPreload=true"
+      - "traefik.http.middlewares.sec-headers.headers.contentTypeNosniff=true"
+      - "traefik.http.middlewares.sec-headers.headers.browserXssFilter=true"
+      - "traefik.http.middlewares.sec-headers.headers.customResponseHeaders.X-Frame-Options=DENY"
+      - "traefik.http.middlewares.sec-headers.headers.customResponseHeaders.Referrer-Policy=strict-origin-when-cross-origin"
+      - "traefik.http.routers.api.middlewares=sec-headers"
+
+  # ── DATA : PostgreSQL (zone critique) ─────────────────────────────────────
   postgres:
     image: postgres:16-alpine
     container_name: cleanink_postgres
@@ -8,39 +121,19 @@ services:
     environment:
       POSTGRES_DB: cleanink_oncall
       POSTGRES_USER: cleanink
-      POSTGRES_PASSWORD: cleanink_pass
-    ports:
-      - "5434:5432"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+    # Aucun port exposé — joignable uniquement depuis fn-data (l'API)
+    # Pour accès direct en développement → voir docker-compose.override.yml
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - fn-data    # fn-edge n'a pas accès à ce réseau
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U cleanink -d cleanink_oncall"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  api:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: cleanink_api
-    restart: unless-stopped
-    ports:
-      - "5100:80"
-    environment:
-      ASPNETCORE_ENVIRONMENT: Development
-      ConnectionStrings__Default: "Host=postgres;Port=5432;Database=cleanink_oncall;Username=cleanink;Password=cleanink_pass"
-      Jwt__SecretKey: "CHANGE_ME_IN_PRODUCTION_USE_ENV_VAR_OR_SECRETS_MANAGER"
-      Jwt__Issuer: "CleanInkOnCall"
-      Jwt__Audience: "CleanInkOnCallClients"
-      # Override these with real keys via .env file or CI secrets
-      Claude__ApiKey: "${CLAUDE_API_KEY:-CHANGE_ME}"
-      AzureOpenAI__ApiKey: "${AZURE_OPENAI_API_KEY:-CHANGE_ME}"
-      AzureOpenAI__Endpoint: "${AZURE_OPENAI_ENDPOINT:-https://placeholder.openai.azure.com}"
-      AzureOpenAI__DeploymentName: "${AZURE_OPENAI_DEPLOYMENT:-gpt-4o}"
-    depends_on:
-      postgres:
-        condition: service_healthy
-
 volumes:
   postgres_data:
+  traefik_certs:

@@ -1,6 +1,6 @@
 {
   "name": "cleanink-oncall",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
@@ -8,7 +8,13 @@
     "build:prod": "ng build --configuration production",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "lint": "ng lint"
+    "lint": "ng lint",
+    "prepare": "husky",
+    "release": "release-it",
+    "release:dry": "release-it --dry-run",
+    "release:patch": "release-it patch --ci",
+    "release:minor": "release-it minor --ci",
+    "release:major": "release-it major --ci"
   },
   "private": true,
   "dependencies": {
@@ -30,8 +36,12 @@
     "@angular-devkit/build-angular": "^17.3.0",
     "@angular/cli": "^17.3.0",
     "@angular/compiler-cli": "^17.3.0",
+    "@commitlint/cli": "^20.5.3",
+    "@commitlint/config-conventional": "^20.5.3",
+    "@release-it/conventional-changelog": "^11.0.0",
     "@types/jasmine": "~5.1.0",
     "autoprefixer": "^10.4.17",
+    "husky": "^9.1.7",
     "jasmine-core": "~5.1.0",
     "karma": "~6.4.0",
     "karma-chrome-launcher": "~3.2.0",
@@ -40,6 +50,7 @@
     "karma-jasmine-html-reporter": "~2.1.0",
     "playwright": "^1.59.1",
     "postcss": "^8.4.35",
+    "release-it": "^20.0.1",
     "tailwindcss": "^3.4.1",
     "typescript": "~5.4.0"
   }

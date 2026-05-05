@@ -1,0 +1,46 @@
+{
+  "$schema": "https://unpkg.com/release-it/schema/release-it.json",
+
+  "git": {
+    "commitMessage": "chore: release v${version}",
+    "tagName": "v${version}",
+    "tagAnnotation": "CleanInk OnCall v${version}",
+    "requireBranch": "main",
+    "requireCleanWorkingDir": true,
+    "push": true
+  },
+
+  "github": {
+    "release": false
+  },
+
+  "npm": {
+    "publish": false
+  },
+
+  "hooks": {
+    "after:bump": "node scripts/bump-dotnet-version.js ${version}"
+  },
+
+  "plugins": {
+    "@release-it/conventional-changelog": {
+      "preset": {
+        "name": "conventionalcommits",
+        "types": [
+          { "type": "feat",     "section": "✨ Features" },
+          { "type": "fix",      "section": "🐛 Bug Fixes" },
+          { "type": "perf",     "section": "⚡ Performance" },
+          { "type": "refactor", "section": "♻️ Refactoring", "hidden": false },
+          { "type": "docs",     "section": "📚 Documentation", "hidden": false },
+          { "type": "build",    "section": "🔧 Build System", "hidden": false },
+          { "type": "ci",       "section": "👷 CI/CD", "hidden": false },
+          { "type": "chore",    "hidden": true },
+          { "type": "style",    "hidden": true },
+          { "type": "test",     "hidden": true }
+        ]
+      },
+      "infile": "CHANGELOG.md",
+      "header": "# Changelog\n\nAll notable changes to CleanInk OnCall are documented here.\nFormat: [Semantic Versioning](https://semver.org/) — [Conventional Commits](https://www.conventionalcommits.org/)\n"
+    }
+  }
+}

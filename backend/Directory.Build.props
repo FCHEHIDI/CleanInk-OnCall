@@ -1,0 +1,18 @@
+<Project>
+  <!--
+    Version centralisée pour tous les projets .NET de la solution.
+    Ce fichier est mis à jour automatiquement par `pnpm release` via
+    scripts/bump-dotnet-version.js — NE PAS éditer manuellement.
+  -->
+  <PropertyGroup>
+    <Version>0.1.0</Version>
+    <AssemblyVersion>0.1.0.0</AssemblyVersion>
+    <FileVersion>0.1.0.0</FileVersion>
+    <InformationalVersion>0.1.0</InformationalVersion>
+    <Company>CleanInk</Company>
+    <Product>CleanInk OnCall</Product>
+    <Copyright>Copyright © CleanInk 2026</Copyright>
+    <Authors>CleanInk</Authors>
+    <RepositoryUrl>https://github.com/FCHEHIDI/CleanInk-OnCall</RepositoryUrl>
+  </PropertyGroup>
+</Project>

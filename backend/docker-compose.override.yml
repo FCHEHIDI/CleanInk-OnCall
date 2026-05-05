@@ -1,0 +1,44 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Overrides de développement local — NE PAS utiliser en production
+#
+# Docker Compose charge ce fichier automatiquement en complément de
+# docker-compose.yml quand on lance `docker compose up` sans -f explicite.
+#
+# Ce fichier :
+#   - expose Postgres sur 127.0.0.1:5434 (pour dotnet run local + DBeaver)
+#   - expose l'API sur 127.0.0.1:5100 (bypass Traefik pour debug direct)
+#   - passe ASPNETCORE_ENVIRONMENT=Development
+#   - active le logging DEBUG dans Traefik
+#   - désactive la redirection HTTP→HTTPS (évite les warnings cert auto-signé)
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  traefik:
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=cleanink_app"
+      - "--entrypoints.web.address=:8090"        # port alternatif dev (80 pris par microcity)
+      - "--entrypoints.websecure.address=:8443"  # port alternatif dev (443 pris par lm_traefik)
+      - "--api.dashboard=true"
+      - "--api.insecure=true"                    # dashboard sans auth en dev
+      - "--entrypoints.traefik.address=:8091"    # port alternatif dev (8080 pris par microcity)
+      - "--log.level=DEBUG"
+      - "--accesslog=true"
+    ports:
+      - "127.0.0.1:8090:8090"     # HTTP dev (override des ports 80/443/8080 du main)
+      - "127.0.0.1:8443:8443"
+      - "127.0.0.1:8091:8091"     # dashboard
+
+  api:
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+    ports:
+      - "127.0.0.1:5100:80"                     # accès direct bypass Traefik
+
+  postgres:
+    ports:
+      - "127.0.0.1:5434:5432"                   # accès direct pour dotnet run + outils DB
+    environment:
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-cleanink_pass_dev}"
