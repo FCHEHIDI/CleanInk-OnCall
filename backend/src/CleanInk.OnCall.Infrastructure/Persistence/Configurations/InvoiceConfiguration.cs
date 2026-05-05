@@ -39,7 +39,7 @@ public sealed class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         builder.Property(i => i.ThirdPartyPayerClaimId).IsRequired(false);
 
         builder.Property(i => i.IssuedAt).IsRequired();
-        builder.Property(i => i.DueAt).IsRequired(false);
+        builder.Property(i => i.DueAt).IsRequired();
         builder.Property(i => i.PaidAt).IsRequired(false);
         builder.Property(i => i.UpdatedAt).IsRequired();
 

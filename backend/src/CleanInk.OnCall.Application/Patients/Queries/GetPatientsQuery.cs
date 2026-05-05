@@ -48,6 +48,6 @@ public sealed class GetPatientsQueryHandler
             request.NameFragment, dtos.Count, total);
 
         return Result<PagedResult<PatientDto>>.Success(
-            new PagedResult<PatientDto>(dtos, total, request.Page, request.PageSize));
+            new PagedResult<PatientDto>(dtos, request.Page, request.PageSize, total));
     }
 }

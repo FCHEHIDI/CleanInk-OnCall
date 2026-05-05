@@ -53,6 +53,23 @@ public sealed class EncounterRepository : IEncounterRepository
     }
 
     /// <inheritdoc/>
+    public async Task<IReadOnlyList<Encounter>> GetAllAsync(
+        EncounterStatus? status = null,
+        int page = 1,
+        int pageSize = 20,
+        CancellationToken ct = default)
+    {
+        var query = _db.Encounters.AsNoTracking();
+        if (status.HasValue)
+            query = query.Where(e => e.Status == status.Value);
+        return await query
+            .OrderByDescending(e => e.Period.Start)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(ct);
+    }
+
+    /// <inheritdoc/>
     public async Task AddAsync(Encounter encounter, CancellationToken ct = default)
     {
         await _db.Encounters.AddAsync(encounter, ct);

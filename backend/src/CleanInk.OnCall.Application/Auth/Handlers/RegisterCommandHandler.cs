@@ -69,6 +69,7 @@ public sealed class RegisterCommandHandler : IRequestHandler<RegisterCommand, Re
             return userResult.Error;
 
         await _users.AddAsync(userResult.Value!, cancellationToken);
+        await _users.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation(
             "New user registered: {UserId}, Role: {Role}.", userResult.Value!.Id, request.Role);

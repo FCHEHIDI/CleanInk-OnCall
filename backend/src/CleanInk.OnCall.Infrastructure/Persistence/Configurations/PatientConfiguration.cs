@@ -15,6 +15,19 @@ public sealed class PatientConfiguration : IEntityTypeConfiguration<Patient>
 {
     private static readonly JsonSerializerOptions _json = new(JsonSerializerDefaults.Web);
 
+    /// <summary>
+    /// Safely deserializes a JSONB column into a list.
+    /// Guards against the legacy default value '{}' (empty JSON object) that EF
+    /// migrations can write instead of '[]' — avoids a JsonException at load time.
+    /// </summary>
+    private static List<T> SafeList<T>(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return [];
+        var trimmed = raw.TrimStart();
+        if (!trimmed.StartsWith('[')) return [];
+        return JsonSerializer.Deserialize<List<T>>(raw, _json) ?? [];
+    }
+
     /// <inheritdoc/>
     public void Configure(EntityTypeBuilder<Patient> builder)
     {
@@ -23,27 +36,30 @@ public sealed class PatientConfiguration : IEntityTypeConfiguration<Patient>
         builder.HasKey(p => p.Id);
         builder.Property(p => p.Id).ValueGeneratedNever();
 
-        // FHIR Lists stored as JSONB.
+        // FHIR Lists stored as JSONB. Default is '[]' (empty array, not object).
         builder.Property(p => p.Names)
             .HasColumnName("names")
             .HasColumnType("jsonb")
+            .HasDefaultValueSql("'[]'::jsonb")
             .HasConversion(
                 v => JsonSerializer.Serialize(v, _json),
-                raw => JsonSerializer.Deserialize<List<HumanName>>(raw, _json) ?? new());
+                raw => SafeList<HumanName>(raw));
 
         builder.Property(p => p.Identifiers)
             .HasColumnName("identifiers")
             .HasColumnType("jsonb")
+            .HasDefaultValueSql("'[]'::jsonb")
             .HasConversion(
                 v => JsonSerializer.Serialize(v, _json),
-                raw => JsonSerializer.Deserialize<List<FhirIdentifier>>(raw, _json) ?? new());
+                raw => SafeList<FhirIdentifier>(raw));
 
         builder.Property(p => p.ContactPoints)
             .HasColumnName("contact_points")
             .HasColumnType("jsonb")
+            .HasDefaultValueSql("'[]'::jsonb")
             .HasConversion(
                 v => JsonSerializer.Serialize(v, _json),
-                raw => JsonSerializer.Deserialize<List<ContactPoint>>(raw, _json) ?? new());
+                raw => SafeList<ContactPoint>(raw));
 
         builder.Property(p => p.Gender)
             .HasColumnName("gender")

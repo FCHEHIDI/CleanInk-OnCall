@@ -20,6 +20,12 @@ public interface IEncounterRepository
         EncounterStatus? status = null,
         CancellationToken ct = default);
 
+    Task<IReadOnlyList<Encounter>> GetAllAsync(
+        EncounterStatus? status = null,
+        int page = 1,
+        int pageSize = 20,
+        CancellationToken ct = default);
+
     Task AddAsync(Encounter encounter, CancellationToken ct = default);
     void Update(Encounter encounter);
 

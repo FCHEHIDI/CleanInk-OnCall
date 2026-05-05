@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace CleanInk.OnCall.Shared.Fhir;
 
 /// <summary>
@@ -26,8 +28,17 @@ public sealed record Coding(string System, string Code, string? Display = null)
 /// </summary>
 /// <param name="Codings">One or more codings from different systems.</param>
 /// <param name="Text">Plain-text representation (fallback or user-entered).</param>
-public sealed record CodeableConcept(Coding[] Codings, string? Text = null)
+public sealed record CodeableConcept
 {
+    [JsonConstructor]
+    public CodeableConcept(Coding[] Codings, string? Text = null)
+    {
+        this.Codings = Codings;
+        this.Text = Text;
+    }
+
+    public Coding[] Codings { get; init; }
+    public string? Text { get; init; }
     /// <summary>Convenience constructor for a single coding.</summary>
     public CodeableConcept(Coding coding, string? text = null)
         : this([coding], text) { }

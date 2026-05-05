@@ -51,6 +51,23 @@ public sealed class InvoiceRepository : IInvoiceRepository
     }
 
     /// <inheritdoc/>
+    public async Task<IReadOnlyList<Invoice>> GetAllAsync(
+        InvoiceStatus? status = null,
+        int page = 1,
+        int pageSize = 100,
+        CancellationToken ct = default)
+    {
+        var query = _db.Invoices.AsNoTracking();
+        if (status.HasValue)
+            query = query.Where(i => i.Status == status.Value);
+        return await query
+            .OrderByDescending(i => i.IssuedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(ct);
+    }
+
+    /// <inheritdoc/>
     public async Task AddAsync(Invoice invoice, CancellationToken ct = default)
     {
         await _db.Invoices.AddAsync(invoice, ct);

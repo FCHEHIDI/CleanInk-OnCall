@@ -17,6 +17,12 @@ public interface IInvoiceRepository
         InvoiceStatus? status = null,
         CancellationToken ct = default);
 
+    Task<IReadOnlyList<Invoice>> GetAllAsync(
+        InvoiceStatus? status = null,
+        int page = 1,
+        int pageSize = 100,
+        CancellationToken ct = default);
+
     Task AddAsync(Invoice invoice, CancellationToken ct = default);
     void Update(Invoice invoice);
 }

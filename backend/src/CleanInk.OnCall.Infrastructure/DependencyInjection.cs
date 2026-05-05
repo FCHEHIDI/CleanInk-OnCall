@@ -42,6 +42,9 @@ public static class DependencyInjection
         services.AddScoped<IAuditRepository, AuditRepository>();
         services.AddScoped<IEncounterRepository, EncounterRepository>();
 
+        // ── Read models (cross-entity aggregation) ────────────────────────────────
+        services.AddScoped<IDashboardReadModel, DashboardReadModel>();
+
         // ── Auth services ─────────────────────────────────────────────────────────
         services.AddScoped<IPasswordHasher, BCryptPasswordHasher>();
         services.AddScoped<ITokenService, JwtTokenService>();

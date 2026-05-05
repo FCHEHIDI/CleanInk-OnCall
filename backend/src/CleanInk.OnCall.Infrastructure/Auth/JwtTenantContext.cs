@@ -39,7 +39,7 @@ public sealed class JwtTenantContext : ITenantContext
         }
     }
 
-    public string SchemaName => $"tenant_{TenantId:N}";
+    public string SchemaName => IsResolved ? $"tenant_{TenantId:N}" : "public";
 
     public Guid CurrentUserId
     {

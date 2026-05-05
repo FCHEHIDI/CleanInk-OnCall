@@ -48,9 +48,11 @@ public sealed class GetInvoicesQueryHandler
             "Fetching invoices page={Page} size={PageSize} customer={CustomerId}",
             request.Page, request.PageSize, request.CustomerId);
 
-        var items = await _invoices.GetByPatientAsync(
-            request.CustomerId ?? Guid.Empty,
-            ct: cancellationToken);
+        IReadOnlyList<Domain.Entities.Invoice> items;
+        if (request.CustomerId.HasValue)
+            items = await _invoices.GetByPatientAsync(request.CustomerId.Value, ct: cancellationToken);
+        else
+            items = await _invoices.GetAllAsync(page: request.Page, pageSize: Math.Min(request.PageSize, 100), ct: cancellationToken);
 
         var dtos = items.Select(i => new InvoiceDto(
             i.Id,

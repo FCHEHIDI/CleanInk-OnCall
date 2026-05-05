@@ -25,6 +25,25 @@ public sealed class EncountersController : ControllerBase
     public EncountersController(IMediator mediator) => _mediator = mediator;
 
     /// <summary>
+    /// Returns a paginated list of all encounters across all patients.
+    /// </summary>
+    /// <param name="page">1-based page number (default 1).</param>
+    /// <param name="pageSize">Items per page (default 20, max 100).</param>
+    /// <param name="status">Optional status filter: InProgress | Finished | Cancelled.</param>
+    /// <param name="ct">Cancellation token.</param>
+    [HttpGet]
+    [ProducesResponseType(typeof(PagedResult<EncounterDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAll(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? status = null,
+        CancellationToken ct = default)
+    {
+        var result = await _mediator.Send(new GetAllEncountersQuery(status, page, pageSize), ct);
+        return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Error);
+    }
+
+    /// <summary>
     /// Returns all encounters for a patient, ordered by most recent first.
     /// </summary>
     /// <param name="patientId">Patient identifier.</param>
