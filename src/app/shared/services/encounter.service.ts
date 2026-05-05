@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { ApiService } from '../../core/services/api.service';
+import { PagedResult } from './call.service';
 
 export interface EncounterDto {
   id: string;
@@ -35,6 +36,15 @@ export interface CancelEncounterRequest {
 @Injectable({ providedIn: 'root' })
 export class EncounterService {
   constructor(private api: ApiService) {}
+
+  getAll(page = 1, pageSize = 20, status?: string): Observable<PagedResult<EncounterDto>> {
+    const params: Record<string, string> = {
+      page: String(page),
+      pageSize: String(pageSize),
+    };
+    if (status) params['status'] = status;
+    return this.api.get<PagedResult<EncounterDto>>('/api/encounters', params);
+  }
 
   getByPatient(patientId: string, status?: string): Observable<EncounterDto[]> {
     const params: Record<string, string> = {};

@@ -149,19 +149,29 @@ export class EncountersComponent implements OnInit {
   error = '';
   statusFilter = '';
 
-  // NOTE: Without a patientId context this page shows nothing — it is meant to be used
-  // embedded inside patient-detail or accessed via /patients/:id tab.
-  // For a standalone list we'd need a server-side paginated all-encounters query.
-  // Keeping this as a placeholder until that query is added.
-
   constructor(private encounterService: EncounterService) {}
 
   ngOnInit(): void {
-    // Standalone page: display empty state — data loads from patient-detail context
+    this.loadEncounters();
+  }
+
+  loadEncounters(): void {
+    this.loading = true;
+    this.error = '';
+    this.encounterService.getAll(1, 50, this.statusFilter || undefined).subscribe({
+      next: (result) => {
+        this.encounters = result.items;
+        this.loading = false;
+      },
+      error: (err) => {
+        this.error = 'Impossible de charger les consultations.';
+        this.loading = false;
+      },
+    });
   }
 
   onFilterChange(): void {
-    // Will be used when a patientId is provided via query params
+    this.loadEncounters();
   }
 
   classLabel(cls: string): string {

@@ -224,9 +224,9 @@ export class BillingComponent implements OnInit {
         const pending = res.items.filter((i) => i.status === 'Issued').reduce((sum, i) => sum + i.amountCents, 0);
         const overdue = res.items.filter((i) => i.status === 'Cancelled').reduce((sum, i) => sum + i.amountCents, 0);
         this.stats = [
-          { label: 'Total facturé (mois)', value: `€ ${total.toFixed(0)}` },
-          { label: 'En attente',           value: `€ ${pending.toFixed(0)}` },
-          { label: 'Impayées',             value: `€ ${overdue.toFixed(0)}` },
+          { label: 'Total facturé (mois)', value: `€ ${(total / 100).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` },
+          { label: 'En attente',           value: `€ ${(pending / 100).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` },
+          { label: 'Impayées',             value: `€ ${(overdue / 100).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` },
           { label: 'Factures émises',      value: String(res.totalCount) },
         ];
         this.loading = false;

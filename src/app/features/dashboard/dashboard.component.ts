@@ -1,8 +1,9 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { KpiCardComponent } from './kpis/kpi-card.component';
 import { MatIconModule } from '@angular/material/icon';
+import { DashboardService } from './dashboard.service';
 
 interface KPI {
   label: string;
@@ -382,13 +383,35 @@ interface Activity {
     }
   `],
 })
-export class DashboardComponent {
+export class DashboardComponent implements OnInit {
+  kpisLoading = true;
+
   kpis: KPI[] = [
-    { label: 'Appels du jour',      value: '142',    delta: '+12%',  deltaPositive: true,  icon: 'cell_tower',   color: '#3de8b0' },
-    { label: 'Temps de réponse',    value: '4m 32s', delta: '-8%',   deltaPositive: true,  icon: 'timer',        color: '#3de8b0' },
-    { label: 'Factures en attente', value: '23',     delta: '+3',    deltaPositive: false, icon: 'receipt_long', color: '#e8a83d' },
-    { label: 'Agents actifs',       value: '8',      delta: 'Stable',deltaPositive: true,  icon: 'hub',          color: '#3de8b0' },
+    { label: 'Appels du jour',      value: '—',      delta: '',       deltaPositive: true,  icon: 'cell_tower',   color: '#3de8b0' },
+    { label: 'Appels ouverts',      value: '—',      delta: '',       deltaPositive: true,  icon: 'timer',        color: '#3de8b0' },
+    { label: 'Factures en attente', value: '—',      delta: '',       deltaPositive: false, icon: 'receipt_long', color: '#e8a83d' },
+    { label: 'Utilisateurs actifs', value: '—',      delta: '',       deltaPositive: true,  icon: 'hub',          color: '#3de8b0' },
   ];
+
+  constructor(private dashboardService: DashboardService) {}
+
+  ngOnInit(): void {
+    this.dashboardService.getKpis().subscribe({
+      next: (data) => {
+        this.kpis = [
+          { label: 'Appels du jour',      value: String(data.callsToday),       delta: '',       deltaPositive: true,  icon: 'cell_tower',   color: '#3de8b0' },
+          { label: 'Appels ouverts',      value: String(data.openCalls),        delta: '',       deltaPositive: true,  icon: 'timer',        color: '#3de8b0' },
+          { label: 'Factures en attente', value: String(data.pendingInvoices),  delta: '',       deltaPositive: false, icon: 'receipt_long', color: '#e8a83d' },
+          { label: 'Utilisateurs actifs', value: String(data.activeUsers),      delta: '',       deltaPositive: true,  icon: 'hub',          color: '#3de8b0' },
+        ];
+        this.kpisLoading = false;
+      },
+      error: () => {
+        // Fallback: keep placeholder values, hide loading
+        this.kpisLoading = false;
+      },
+    });
+  }
 
   activities: Activity[] = [
     { type: 'call',    label: 'Appel entrant — Dupont M.',  detail: 'Triage AI: Urgence modérée',    time: '21:42',  icon: 'call_received'  },

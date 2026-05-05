@@ -1,29 +1,26 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RouterModule } from '@angular/router';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
-import { StatusBadgeComponent } from '../../shared/components/status-badge/status-badge.component';
-
-interface CallEntry {
-  id: string;
-  caller: string;
-  phone: string;
-  agent: string;
-  duration: string;
-  status: 'active' | 'pending' | 'inactive';
-  time: string;
-}
+import { StatusBadgeComponent, BadgeStatus } from '../../shared/components/status-badge/status-badge.component';
+import { CallService, CallDto } from '../../shared/services/call.service';
 
 @Component({
   selector: 'app-call-center',
   standalone: true,
   imports: [
     CommonModule,
+    RouterModule,
     MatTableModule,
     MatButtonModule,
     MatIconModule,
+    MatProgressSpinnerModule,
+    MatTooltipModule,
     PageHeaderComponent,
     StatusBadgeComponent,
   ],
@@ -59,43 +56,67 @@ interface CallEntry {
       </button>
     </app-page-header>
 
-    <div class="ci-card">
-      <table mat-table [dataSource]="calls" class="w-full">
+    <div class="fn-card mt-4">
+      <div *ngIf="loading" class="fn-loading">Chargement…</div>
+      <div *ngIf="error" class="fn-error">{{ error }}</div>
 
-        <ng-container matColumnDef="caller">
-          <th mat-header-cell *matHeaderCellDef>Appelant</th>
+      <table *ngIf="!loading && !error" mat-table [dataSource]="calls" class="w-full">
+
+        <ng-container matColumnDef="subject">
+          <th mat-header-cell *matHeaderCellDef>Sujet</th>
           <td mat-cell *matCellDef="let row">
-            <strong>{{ row.caller }}</strong>
-            <div class="text-xs text-gray-400">{{ row.phone }}</div>
+            <strong>{{ row.subject }}</strong>
+            <div class="fn-sub">{{ row.description | slice:0:60 }}{{ row.description.length > 60 ? '…' : '' }}</div>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="priority">
+          <th mat-header-cell *matHeaderCellDef>Priorité</th>
+          <td mat-cell *matCellDef="let row">
+            <span [class]="priorityClass(row.priority ?? 'routine')">{{ row.priority ?? 'routine' }}</span>
           </td>
         </ng-container>
 
         <ng-container matColumnDef="agent">
-          <th mat-header-cell *matHeaderCellDef>Agent</th>
-          <td mat-cell *matCellDef="let row">{{ row.agent }}</td>
+          <th mat-header-cell *matHeaderCellDef>Assigné à</th>
+          <td mat-cell *matCellDef="let row">
+            <span *ngIf="row.assignedPractitionerId; else unassigned" class="fn-agent">
+              <mat-icon class="fn-agent__icon">person</mat-icon>
+              {{ row.assignedPractitionerId | slice:0:8 }}…
+            </span>
+            <ng-template #unassigned>
+              <span class="fn-unassigned">Non assigné</span>
+            </ng-template>
+          </td>
         </ng-container>
 
-        <ng-container matColumnDef="duration">
-          <th mat-header-cell *matHeaderCellDef>Durée</th>
-          <td mat-cell *matCellDef="let row">{{ row.duration }}</td>
-        </ng-container>
-
-        <ng-container matColumnDef="time">
-          <th mat-header-cell *matHeaderCellDef>Heure</th>
-          <td mat-cell *matCellDef="let row">{{ row.time }}</td>
+        <ng-container matColumnDef="createdAt">
+          <th mat-header-cell *matHeaderCellDef>Reçu le</th>
+          <td mat-cell *matCellDef="let row">{{ row.createdAt | date:'dd/MM HH:mm' }}</td>
         </ng-container>
 
         <ng-container matColumnDef="status">
           <th mat-header-cell *matHeaderCellDef>Statut</th>
           <td mat-cell *matCellDef="let row">
-            <app-status-badge [status]="row.status" [label]="row.status"></app-status-badge>
+            <app-status-badge
+              [status]="statusToBadge(row.status)"
+              [label]="statusLabel(row.status)">
+            </app-status-badge>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="aiTag">
+          <th mat-header-cell *matHeaderCellDef>Tag IA</th>
+          <td mat-cell *matCellDef="let row">
+            <span *ngIf="row.aiTriageTag" class="fn-ai-tag">{{ row.aiTriageTag }}</span>
+            <span *ngIf="!row.aiTriageTag" class="fn-dim">—</span>
           </td>
         </ng-container>
 
         <ng-container matColumnDef="actions">
           <th mat-header-cell *matHeaderCellDef></th>
           <td mat-cell *matCellDef="let row">
-            <button mat-icon-button matTooltip="Détails">
+            <button mat-icon-button [routerLink]="['/call-center', row.id]" matTooltip="Voir l'appel">
               <mat-icon>open_in_new</mat-icon>
             </button>
           </td>
@@ -104,6 +125,10 @@ interface CallEntry {
         <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
         <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
       </table>
+
+      <p *ngIf="!loading && !error && calls.length === 0" class="fn-empty">
+        Aucun appel en cours.
+      </p>
     </div>
 
       </div><!-- /fn-scene__content -->
@@ -177,16 +202,73 @@ interface CallEntry {
       padding: var(--scene-pad-y, 1.75rem) var(--scene-pad-x, 2rem);
     }
 
+    .fn-card { background: rgba(10,18,40,.7); border: 1px solid rgba(28,47,90,.5); border-radius: var(--fn-r-lg, 12px); padding: 1rem; backdrop-filter: blur(8px); overflow-x: auto; }
+    .mt-4 { margin-top: 1rem; }
     .w-full { width: 100%; }
+    .fn-loading, .fn-empty { color: var(--fn-text-dim); padding: 1.5rem; text-align: center; font-size: .9rem; }
+    .fn-error { color: #f87171; padding: 1rem; }
+    .fn-sub { font-size: .75rem; color: var(--fn-text-dim, #8899bb); margin-top: 2px; }
+    .fn-dim { color: var(--fn-text-dim, #8899bb); font-size: .8rem; }
+    .fn-agent { display: inline-flex; align-items: center; gap: 4px; font-size: .8rem; color: var(--fn-bio, #3de8b0); }
+    .fn-agent__icon { font-size: 14px; width: 14px; height: 14px; }
+    .fn-unassigned { font-size: .8rem; color: var(--fn-text-dim, #8899bb); font-style: italic; }
+    .fn-ai-tag { background: rgba(61,232,176,.12); color: var(--fn-bio, #3de8b0); padding: .15rem .5rem; border-radius: 99px; font-size: .72rem; font-weight: 500; }
+    .prio-routine { color: #94a3b8; font-size: .78rem; }
+    .prio-urgent  { color: #fb923c; font-size: .78rem; font-weight: 600; }
+    .prio-asap    { color: #f87171; font-size: .78rem; font-weight: 700; }
+    .prio-stat    { color: #dc2626; font-size: .78rem; font-weight: 700; text-transform: uppercase; }
   `],
 })
-export class CallCenterComponent {
-  displayedColumns = ['caller', 'agent', 'duration', 'time', 'status', 'actions'];
+export class CallCenterComponent implements OnInit {
+  displayedColumns = ['subject', 'priority', 'agent', 'createdAt', 'status', 'aiTag', 'actions'];
+  calls: CallDto[] = [];
+  loading = true;
+  error: string | null = null;
 
-  calls: CallEntry[] = [
-    { id: '1', caller: 'Martin Dupont',   phone: '+33 6 12 34 56 78', agent: 'Léa M.',   duration: '3m 12s', status: 'active',   time: '09:41' },
-    { id: '2', caller: 'Sophie Bernard',  phone: '+33 7 98 76 54 32', agent: 'Tom R.',   duration: '1m 05s', status: 'active',   time: '09:39' },
-    { id: '3', caller: 'Jean-Paul Morin', phone: '+33 6 55 44 33 22', agent: 'En attente', duration: '—', status: 'pending', time: '09:44' },
-    { id: '4', caller: 'Claire Fontaine', phone: '+33 6 11 22 33 44', agent: 'Ana S.',   duration: '7m 48s', status: 'inactive', time: '09:30' },
-  ];
+  constructor(private callService: CallService) {}
+
+  ngOnInit(): void {
+    this.load();
+  }
+
+  private load(): void {
+    this.loading = true;
+    this.error = null;
+    this.callService.getCalls(1, 50).subscribe({
+      next: (res) => {
+        this.calls = res.items;
+        this.loading = false;
+      },
+      error: () => {
+        this.error = 'Impossible de charger les appels.';
+        this.loading = false;
+      },
+    });
+  }
+
+  statusToBadge(status: string): BadgeStatus {
+    const map: Record<string, BadgeStatus> = {
+      Pending:    'pending',
+      InProgress: 'active',
+      Resolved:   'success',
+      Escalated:  'error',
+      Cancelled:  'inactive',
+    };
+    return map[status] ?? 'inactive';
+  }
+
+  statusLabel(status: string): string {
+    const map: Record<string, string> = {
+      Pending:    'En attente',
+      InProgress: 'En cours',
+      Resolved:   'Résolu',
+      Escalated:  'Escaladé',
+      Cancelled:  'Annulé',
+    };
+    return map[status] ?? status;
+  }
+
+  priorityClass(priority: string): string {
+    return `prio-${priority.toLowerCase()}`;
+  }
 }
